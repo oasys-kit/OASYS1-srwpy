@@ -10,7 +10,7 @@ nofftw: core
 all: clean fftw core
 
 fftw:
-	git clone https://github.com/PaNOSC-ViNYL/FFTW.git $(fftw_dir) && \
+	git clone https://github.com/oasys-kit/FFTW.git $(fftw_dir) && \
 	cd $(fftw_dir) && \
 	CFLAGS=-fPIC ./configure --enable-float --with-pic && \
 	make -j8 && \

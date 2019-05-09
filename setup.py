@@ -60,9 +60,9 @@ def check_dependencies():
         if not which("make"):
             raise Exception("You need to install make in order to execute the makefile to build SRW")
 
-class VinylSRWBuild(build):
+class OasysSRWBuild(build):
     '''
-    This class is a wrapper to build SRW before making link before SRW and VinylSRW
+    This class is a wrapper to build SRW before making link before SRW and OasysSRW
     '''
     def run(self):
         check_dependencies()
@@ -83,14 +83,14 @@ class VinylSRWBuild(build):
             sub_run(['make', '-C', os.path.join(here, 'core'), 'clean'])
 
 setup(
-    name='vinyl_srw',
-    version='1.0.1',
-    cmdclass={'build': VinylSRWBuild},
+    name='oasys-srwpy',
+    version='1.0.0',
+    cmdclass={'build': OasysSRWBuild},
     description='Synchrotron Radiation Workshop',
     long_description=readme,
     author='European Synchrotron Radiation Facility',
-    author_email='thibault.vallois@esrf.fr',
-    url='https://github.com/PaNOSC-ViNYL/srwpy',
+    author_email='srio@esrf.eu',
+    url='https://github.com/oasys-kit/srwpy',
     packages=find_packages(exclude=['docs', 'tests']),
     include_package_data=True,
     install_requires=requirements,
