@@ -1,4 +1,4 @@
-﻿"""Simple 1D & 2D plotting utilities package for "Synchrotron Radiation Workshop" (SRW).
+"""Simple 1D & 2D plotting utilities package for "Synchrotron Radiation Workshop" (SRW).
 
 ``uti_plot`` currently wraps ``matplotlib``, but other backends are
 planned.  If no suitable backend is available, ``uti_plot_init`` sets
@@ -35,7 +35,7 @@ from oasys_srw.uti_plot_com import rescale_dim
 
 _backend = None
 
-DEFAULT_BACKEND = '<default>'
+DEFAULT_BACKEND = 'QT5Agg'
 
 def uti_plot_init(backend=DEFAULT_BACKEND, fname_format=None):
     """Initializes plotting engine with backend and, optionally, save plots to fname_format
@@ -53,7 +53,7 @@ def uti_plot_init(backend=DEFAULT_BACKEND, fname_format=None):
     global _backend
     if backend is not None:
         try:
-            import uti_plot_matplotlib
+            import oasys_srw.uti_plot_matplotlib as uti_plot_matplotlib
             _backend = uti_plot_matplotlib.Backend(backend, fname_format)
             return
         except:
