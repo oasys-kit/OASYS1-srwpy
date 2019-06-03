@@ -85,7 +85,7 @@ class OasysSRWBuild(build):
 
 setup(
     name='oasys-srwpy',
-    version='1.0.0',
+    version='1.0.1',
     cmdclass={'build': OasysSRWBuild},
     description='Synchrotron Radiation Workshop',
     long_description=readme,
