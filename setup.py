@@ -44,6 +44,7 @@ if sys.platform == 'win32':
     srwlpy_kwargs['extra_compile_args'] = ['/MT']
 else:
     srwlpy_kwargs['library_dirs'] = ['core/gcc']
+    srwlpy_kwargs['extra_compile_args'] = ['-stdlib=libc++', '-mmacosx-version-min=10.9']
 
 srwlpy = Extension('srwlpy', **srwlpy_kwargs)
 
