@@ -44,7 +44,8 @@ if sys.platform == 'win32':
     srwlpy_kwargs['extra_compile_args'] = ['/MT']
 else:
     srwlpy_kwargs['library_dirs'] = ['core/gcc']
-    srwlpy_kwargs['extra_compile_args'] = ['-stdlib=libc++', '-mmacosx-version-min=10.9']
+    if sys.platform == 'darwin':
+        srwlpy_kwargs['extra_compile_args'] = ['-stdlib=libc++', '-mmacosx-version-min=10.9']
 
 srwlpy = Extension('srwlpy', **srwlpy_kwargs)
 
@@ -85,7 +86,7 @@ class OasysSRWBuild(build):
 
 setup(
     name='oasys-srwpy',
-    version='1.0.1',
+    version='1.0.2',
     cmdclass={'build': OasysSRWBuild},
     description='Synchrotron Radiation Workshop',
     long_description=readme,
