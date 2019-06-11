@@ -46,6 +46,7 @@ else:
     srwlpy_kwargs['library_dirs'] = ['core/gcc']
     if sys.platform == 'darwin':
         srwlpy_kwargs['extra_compile_args'] = ['-stdlib=libc++', '-mmacosx-version-min=10.9']
+        srwlpy_kwargs['extra_link_args'] = ['-stdlib=libc++', '-mmacosx-version-min=10.9']
 
 srwlpy = Extension('srwlpy', **srwlpy_kwargs)
 
