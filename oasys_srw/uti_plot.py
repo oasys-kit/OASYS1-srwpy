@@ -1,4 +1,4 @@
-"""Simple 1D & 2D plotting utilities package for "Synchrotron Radiation Workshop" (SRW).
+﻿"""Simple 1D & 2D plotting utilities package for "Synchrotron Radiation Workshop" (SRW).
 
 ``uti_plot`` currently wraps ``matplotlib``, but other backends are
 planned.  If no suitable backend is available, ``uti_plot_init`` sets
@@ -29,13 +29,13 @@ Modules:
 
 .. moduleauthor:: Rob Nagler <nagler@radiasoft.net>
 """
+import uti_plot_com
 import sys
 import traceback
-from oasys_srw.uti_plot_com import rescale_dim
 
 _backend = None
 
-DEFAULT_BACKEND = 'QT5Agg'
+DEFAULT_BACKEND = '<default>'
 
 def uti_plot_init(backend=DEFAULT_BACKEND, fname_format=None):
     """Initializes plotting engine with backend and, optionally, save plots to fname_format
@@ -53,7 +53,7 @@ def uti_plot_init(backend=DEFAULT_BACKEND, fname_format=None):
     global _backend
     if backend is not None:
         try:
-            import oasys_srw.uti_plot_matplotlib as uti_plot_matplotlib
+            import uti_plot_matplotlib
             _backend = uti_plot_matplotlib.Backend(backend, fname_format)
             return
         except:
@@ -79,14 +79,16 @@ def uti_plot1d(ar1d, x_range, labels=('Photon Energy [eV]', 'ph/s/0.1%bw'), unit
     #if '_backend' not in locals(): uti_plot_init() #?
     
     if(units is not None):
-        x_range, x_unit = rescale_dim(x_range, units[0])
+        x_range, x_unit = uti_plot_com.rescale_dim(x_range, units[0])
         units = [x_unit, units[1]]
         strTitle = '' if(len(labels) < 3) else labels[2]
         labels = (labels[0] + ' [' + units[0] + ']', labels[1] + ' [' + units[1] + ']', strTitle)
 
+    #print('uti_plot1d:', x_range)
     _backend.uti_plot1d(ar1d, x_range, labels)
 
-def uti_plot1d_ir(ary, arx, labels=('Longitudinal Position [m]', 'Horizontal Position [m]'), units=None): #OC15112017
+def uti_plot1d_ir(ary, arx=None, labels=('Longitudinal Position [m]', 'Horizontal Position [m]'), units=None): #OC25102019
+#def uti_plot1d_ir(ary, arx, labels=('Longitudinal Position [m]', 'Horizontal Position [m]'), units=None): #OC15112017
     """Generate one-dimensional line plot from given array
 
     :param array arx: abscissa array
@@ -97,25 +99,62 @@ def uti_plot1d_ir(ary, arx, labels=('Longitudinal Position [m]', 'Horizontal Pos
     
     if(units is not None):
         #x_range = [min(arx), max(arx), len(arx)]
-        #x_range, x_unit = rescale_dim(x_range, units[0])
+        #x_range, x_unit = uti_plot_com.rescale_dim(x_range, units[0])
         #units = [x_unit, units[1]]
         strTitle = '' if(len(labels) < 3) else labels[2]
         labels = (labels[0] + ' [' + units[0] + ']', labels[1] + ' [' + units[1] + ']', strTitle)
 
+    #OC25102019 (added stuff below)
+    if(arx is None):
+        ary0 = ary
+        if(not(isinstance(ary0, list) or isinstance(ary0, array) or isinstance(ary0, tuple))):
+            raise Exception("Incorrect definition of data arrays / lists to be plotted")
+
+        lenData = len(ary)
+        #arx = array.array('d', [0]*lenData)
+        #aryNew = array.array('d', [0]*lenData)
+        arx = [0]*lenData
+        aryNew = [0]*lenData
+        for i in range(lenData):
+            ay_i = ary[i]
+            arx[i] = ay_i[0]
+            aryNew[i] = ay_i[1]
+        ary = aryNew
+    
     _backend.uti_plot1d_ir(ary, arx, labels)
 
-def uti_plot2d(ar2d, x_range, y_range, labels=('Horizontal Position [m]','Vertical Position [m]'), units=None):
+def uti_plot1d_m(ars, labels=('X', 'Y'), units=None, styles=None, legend=None): #OC25102019
+    """Plot multiple one-dimensional curves in one graph
+
+    :param array ars: multiple data arrays, assuming: ars = [curve_1,curve_2,...], where curve_i can be:
+        curve_i = [[y1_i,y2_i,...],[x_min_i,x_max_i,nx_i]] or
+        curve_i = [[y1_i,y2_i,...],[x1_i,x2_i,...]] or
+        curve_i = [[x1_i,y1_i],[x2_i,y2_i],...] 
+    :param tuple labels: (x-axis, y-axis)
+    :param tuple units: (x-units, y-units)
+    """
+    #if '_backend' not in locals(): uti_plot_init() #?
+    if(units is not None):
+        strTitle = '' if(len(labels) < 3) else labels[2]
+        labels = (labels[0] + ' [' + units[0] + ']', labels[1] + ' [' + units[1] + ']', strTitle)
+
+    _backend.uti_plot1d_m(ars, labels, styles, legend)
+
+def uti_plot2d(ar2d, x_range=None, y_range=None, labels=('Horizontal Position [m]','Vertical Position [m]'), units=None): #OC30052020
+#def uti_plot2d(ar2d, x_range, y_range, labels=('Horizontal Position [m]','Vertical Position [m]'), units=None):
     """Generate quad mesh plot from given "flattened" array
 
-    :param array ar2d: data points
+    :param array ar2d: flat 2d array or list of data points, non-flat 2d array or list, or PIL image
     :param list x_range: Passed to numpy.linspace(start sequence, stop sequnce, num samples)
     :param list y_range: y axis (same structure as x_range)
     :param tuple labels: [x-axis, y-axis]
     """
     #if '_backend' not in locals(): uti_plot_init() #?
-    if(units is not None):
-        x_range, x_unit = rescale_dim(x_range, units[0])
-        y_range, y_unit = rescale_dim(y_range, units[1])
+
+    if((units is not None) and (x_range is not None) and (y_range is not None)): #OC30052020
+    #if(units is not None):
+        x_range, x_unit = uti_plot_com.rescale_dim(x_range, units[0])
+        y_range, y_unit = uti_plot_com.rescale_dim(y_range, units[1])
         units = [x_unit, y_unit,  units[2]]
         strTitle = '' if(len(labels) < 3) else labels[2]
         labels = (labels[0] + ' [' + units[0]+ ']', labels[1] + ' [' + units[1] + ']', strTitle)
@@ -125,7 +164,7 @@ def uti_plot2d(ar2d, x_range, y_range, labels=('Horizontal Position [m]','Vertic
 def uti_plot2d1d(ar2d, x_range, y_range, x=0, y=0, labels=('Horizontal Position', 'Vertical Position', 'Intensity'), units=None, graphs_joined=True):
     """Generate 2d quad mesh plot from given "flattened" array, and 1d cuts passing through (x, y)
 
-    :param array ar2d: data points
+    :param array ar2d: flat 2d array of data points
     :param list x_range: Passed to numpy.linspace(start sequence, stop sequnce, num samples)
     :param list y_range: y axis (same structure as x_range)
     :param x: x value for 1d cut
@@ -134,20 +173,36 @@ def uti_plot2d1d(ar2d, x_range, y_range, x=0, y=0, labels=('Horizontal Position'
     :param tuple units: [x-axis, y-axis, z-axis]
     :param graphs_joined: switch specifying whether the 2d plot and 1d cuts have to be displayed in one panel or separately
     """
+    
     #if '_backend' not in locals(): uti_plot_init() #?
     if(units is not None): #checking / re-scaling x, y
-        x_range, x_unit = rescale_dim(x_range, units[0])
-        y_range, y_unit = rescale_dim(y_range, units[1])
+
+        #OC17032019
+        xRangeOrig = x_range[1] - x_range[0]
+        yRangeOrig = y_range[1] - y_range[0] #AH30082019
+        #yStartOrig = y_range[1] - y_range[0]
+        
+        x_range, x_unit = uti_plot_com.rescale_dim(x_range, units[0])
+        y_range, y_unit = uti_plot_com.rescale_dim(y_range, units[1])
+
+        #OC17032019
+        if(x != 0): x *= (x_range[1] - x_range[0])/xRangeOrig
+        if(y != 0): y *= (y_range[1] - y_range[0])/yRangeOrig
+        
         units = [x_unit, y_unit,  units[2]]
 
         strTitle = labels[2]
         label2D = (labels[0] + ' [' + units[0]+ ']', labels[1] + ' [' + units[1] + ']', strTitle)
 
-        strTitle = 'At ' + labels[1] + ': ' + str(y)
+        #strTitle = 'At ' + labels[1] + ': ' + str(y)
+        strTitle = 'At ' + labels[1] + ': ' + str(round(y, 6)) #OC17032019
+        
         if y != 0: strTitle += ' ' + units[1]
         label1X = (labels[0] + ' [' + units[0] + ']', labels[2] + ' [' + units[2] + ']', strTitle)
 
-        strTitle = 'At ' + labels[0] + ': ' + str(x)
+        #strTitle = 'At ' + labels[0] + ': ' + str(x)
+        strTitle = 'At ' + labels[0] + ': ' + str(round(x, 6)) #OC17032019
+        
         if x != 0: strTitle += ' ' + units[0]
         label1Y = (labels[1] + ' [' + units[1] + ']', labels[2] + ' [' + units[2] + ']', strTitle)
         
@@ -164,6 +219,9 @@ def uti_plot2d1d(ar2d, x_range, y_range, x=0, y=0, labels=('Horizontal Position'
     labels = [label2D, label1X, label1Y]
 
     _backend.uti_plot2d1d(ar2d, x_range, y_range, x, y, labels, graphs_joined)
+
+#def uti_plot_img(_img, _x_range=None, _y_range=None, ): #OC29052020
+#    _backend.uti_plot_img(_img)
 
 def uti_plot_data_file(_fname, _read_labels=1, _e=0, _x=0, _y=0, _graphs_joined=True, #Same as uti_data_file_plot, but better fits function name decoration rules in this module (uti_plot*)
                        _multicolumn_data=False, _column_x=None, _column_y=None, #MR31102017
@@ -228,7 +286,7 @@ class _BackendMissing(_BackendBase):
         return func(*args)
 
 class _BackendNone(_BackendBase):
-    def _backend_call(self, *args, **kwargs):
+    def _backend_call(*args, **kwargs):
         pass
 
 _backend = _BackendMissing()

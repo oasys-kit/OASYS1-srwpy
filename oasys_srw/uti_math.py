@@ -1,11 +1,16 @@
 ﻿#############################################################################
 # uti_math module: misc. mathematical utilities / functions
-# v 0.03
-# Authors: O.C., Maksim Rakitin
+# v 0.04
+# Authors: O.C., Maksim Rakitin, Rebecca Ann Coles
 #############################################################################
 
 from __future__ import print_function #Python 2.7 compatibility
-from math import trunc
+from array import *
+from math import *
+from copy import *
+import random
+#import sys
+#import os
 
 #****************************************************************************
 def interp_1d(_x, _x_min, _x_step, _nx, _ar_f, _ord=3, _ix_per=1, _ix_ofst=0):
@@ -545,7 +550,7 @@ def integ_ar_2d(_ar, _ar_align, _x_grid, _y_grid, _x_lim=None, _y_lim=None):
 #****************************************************************************
 def matr_prod(_A, _B):
     """
-    Multiplies matrix _A by matrix _B 
+    Multiplies matrix _A by matrix or by vector _B 
     """
     # Matrix multiplication
     B0 = _B[0]
@@ -568,6 +573,15 @@ def matr_prod(_A, _B):
     return C
 
 #****************************************************************************
+def matr_transp(_A):
+    """
+    Returns transposed matrix
+    """
+    lenA = len(_A)
+    lenA0 = len(_A[0])
+    return [[_A[i][j] for i in range(lenA)] for j in range(lenA0)]
+
+#****************************************************************************
 def matr_print(_A):
     """
     Prints matrix _A
@@ -576,18 +590,67 @@ def matr_print(_A):
         print(_A[i])
 
 #****************************************************************************
-def matr_3x3_det(_M):
+def matr3x3_det(_M):
     S0 = _M[0]; S1 = _M[1]; S2 = _M[2]
     return S0[0]*S1[1]*S2[2] + S0[1]*S1[2]*S2[0] + S0[2]*S1[0]*S2[1] - S0[2]*S1[1]*S2[0] - S0[0]*S1[2]*S2[1] - S0[1]*S1[0]*S2[2]
 
+def matr_3x3_det(_M):
+    return matr3x3_det(_M)
+
 #****************************************************************************
-def matr_3x3_inv(_M):
+def matr3x3_inv(_M):
     S0 = _M[0]; S1 = _M[1]; S2 = _M[2]
     invDet = 1./(S0[0]*S1[1]*S2[2] + S0[1]*S1[2]*S2[0] + S0[2]*S1[0]*S2[1] - S0[2]*S1[1]*S2[0] - S0[0]*S1[2]*S2[1] - S0[1]*S1[0]*S2[2])
     S0i = [invDet*(S1[1]*S2[2] - S1[2]*S2[1]), invDet*(-S0[1]*S2[2] + S0[2]*S2[1]), invDet*(S0[1]*S1[2] - S0[2]*S1[1])]
     S1i = [invDet*(-S1[0]*S2[2] + S1[2]*S2[0]), invDet*(S0[0]*S2[2] - S0[2]*S2[0]), invDet*(-S0[0]*S1[2] + S0[2]*S1[0])]
     S2i = [invDet*(S1[0]*S2[1] - S1[1]*S2[0]), invDet*(-S0[0]*S2[1] + S0[1]*S2[0]), invDet*(S0[0]*S1[1] - S0[1]*S1[0])]
     return [S0i, S1i, S2i]
+
+def matr_3x3_inv(_M):
+    return matr3x3_inv(_M)
+
+#****************************************************************************
+def vect_prod_s(_V1, _V2):
+    """
+    Returns scalar product of vectors V1 and V2
+    """
+    sizeV1 = len(_V1)
+    sizeV2 = len(_V2)
+    sizeV = sizeV1 if(sizeV1 < sizeV2) else sizeV2
+    res = 0
+    for i in range(sizeV): res += _V1[i]*_V2[i]
+    return res
+
+#****************************************************************************
+def vect3_prod_v(_V1, _V2):
+    """
+    Returns vector product of 3d vectors V1 and V2
+    """
+    return [_V1[1]*_V2[2] - _V1[2]*_V2[1], _V1[2]*_V2[0] - _V1[0]*_V2[2], _V1[0]*_V2[1] - _V1[1]*_V2[0]]
+
+#****************************************************************************
+def vect_norm(_V):
+    """
+    Returns vector norm (/length)
+    """
+    return sqrt(sum(n**2 for n in _V))
+
+#****************************************************************************
+def vect_normalize(_V):
+    """
+    Normalizes vector (in place, i.e. without creating new vector)
+    """
+    invNorm = 1./vect_norm(_V)
+    for i in range(len(_V)): _V[i] *= invNorm
+    return _V
+
+#****************************************************************************
+def vect_mult(_V, _a):
+    """
+    Multiplies vector _V (in place) by number _a
+    """
+    for i in range(len(_V)): _V[i] *= _a
+    return _V
 
 #****************************************************************************
 def trf_rotation(_V, _ang, _P):
@@ -678,3 +741,122 @@ def fwhm(x, y, shift=0.5, return_as_dict=False):  # MR21032017
 #        return r2 - r1  # return the difference (full width)
 #    except ImportError:
 #        return fwhm(x, y)
+
+#****************************************************************************
+def get_dist_uni(_min, _max): #RAC30032020
+    '''Select point using a uniform distribution
+
+    :param _min: minimum possible value.
+    :param _max: maximum possible value.
+    '''
+    ### Load package Numpy
+    #try:
+    #    import numpy as np
+    #except:
+    #    print('NumPy can not be loaded. You may need to install numpy. If you are using pip, you can use the following ' + 
+    #          "command to install it: \npip install numpy")
+        
+    #if int(_min) == int(_max):
+    #    return _max
+    #else:
+    #    return np.random.randint(_min, _max)
+    
+    return random.uniform(_min, _max) #OC24052020
+
+#****************************************************************************
+#def get_dist_norm(_min, _max, _scale=1.0): #OC24052020
+def get_dist_norm(_min, _max, _scale=1.0, _size=None): #RAC30032020
+    '''Select point using a normal (Gaussian) distribution
+
+    :param _min: minimum possible value.
+    :param _max: maximum possible value.
+    :param _scale = 1.0: Standard deviation (spread or “width”) of the distribution.
+    :param _size = None: (int or tuple of ints) 
+        Output shape. If the given shape is, e.g., (m, n, k), then m * n * k 
+        samples are drawn. If size is None (default), a single value is  returned 
+        if loc and scale are both scalars. Otherwise, np.broadcast(loc, scale).size 
+        samples are drawn.
+
+    The probability density for the Gaussian distribution is:
+
+    p(x) = \frac{1}{\sqrt{ 2 \pi \sigma^2 }} e^{ - \frac{ (x - \mu)^2 } {2 \sigma^2} }
+
+    Where \mu is the mean and \sigma the standard deviation. The square of the 
+    standard deviation, \sigma^2, is called the variance. The function has its peak 
+    at the mean, and its “spread” increases with the standard deviation 
+    (the function reaches 0.607 times its maximum at x + \sigma and x - \sigma [2]). 
+    This implies that numpy.random.normal is more likely to return samples lying 
+    close to the mean, rather than those far away.
+    '''
+    ### Load package Numpy
+    #try:
+    #    import numpy as np
+    #except:
+    #    print('NumPy can not be loaded. You may need to install numpy. If you are using pip, you can use the following ' + 
+    #          "command to install it: \npip install numpy")
+    #try:
+    #    _max >= _min
+    #except:
+    #    print("Maximum distribution value is less than minimum distribution value")
+
+    #Get mean (“centre location”) of the distribution.
+    _loc = (_max+_min)/2 #OC24052020
+    #_loc = (_max-_min)/2
+    #print('_min=', _min, '_max=', _max, '_scale=', _scale) #DEBUG
+
+    #Get intiger from normal (Gaussian) distribution centered at _loc
+    _norm_var = 0
+    while _norm_var <= _min or _norm_var >= _max:
+        #OC24052020
+        _norm_var = random.gauss(_loc, _scale) #scale=_scale, size=_size) 
+        #_norm_var = int(np.random.normal(loc=_loc, scale=_scale, size=_size))
+        #print('   _norm_var=', _norm_var) #DEBUG
+
+    return _norm_var
+
+#****************************************************************************
+def get_dist_schultz(_min, _max, poly_index=0.3): #RAC30032020
+    '''elect point using a Flory–Schulz distribution
+
+    :param _min: minimum possible value.
+    :param _max: maximum possible value.
+    :param poly_index = 0.3: particles of varied sizes in the dispersed 
+        phase of a disperse system.
+
+    The Flory–Schulz distribution is a discrete probability distribution named 
+    after Paul Flory and Günter Victor Schulz that describes the relative ratios 
+    of polymers of different length that occur in an ideal step-growth 
+    polymerization process. 
+
+    Calculate the Schulz distribution for polydisperse systems. When the
+    polydispersity is small, the Schulz distribution tends to a Gaussian. 
+
+    Flory–Schulz Distribution:
+        y = y(0) + Ae^((x(c)-x)/w) * (x/x(c))^(x(c)/w)
+
+    Where:
+        y(0) = minimum (_min).
+        A = amplitude (_max-_min).
+        x(c) = center of distribution (mean of x_range).
+        w = width of distribution ((1 - poly_index^2) / (poly_index^2)).
+    '''
+    ### Load package Numpy
+    try:
+        import numpy as np
+    except:
+        print('NumPy can not be loaded. You may need to install numpy. If you are using pip, you can use the following ' + 
+              "command to install it: \npip install numpy")
+
+    #'Width' of the distribution
+    width = int((1 - np.power(poly_index, 2)) / np.power(poly_index, 2))
+
+    #Get a range of values
+    x_range = np.linspace(1,500)
+
+    #Get Mean of Distribution
+    mean = np.mean(x_range)
+
+    #Get Schulz Distribution
+    schulz = (_min + (_max-_min) * (np.exp((mean-x_range)/width)) * np.power((x_range/mean),(mean/width)))
+
+    return int(np.random.choice(schulz))

@@ -156,7 +156,9 @@ public:
 
 	static bool VectCheckIfCollinear(double xV1, double yV1, double zV1, double xV2, double yV2, double zV2, double RelPrec);
 
-	static double Integ1D_FuncWithEdgeDer(double (*pF)(double), double x1, double x2, double dFdx1, double dFdx2, double RelPrec);
+	//static double Integ1D_FuncWithEdgeDer(double (*pF)(double), double x1, double x2, double dFdx1, double dFdx2, double RelPrec);
+	static double Integ1D_FuncWithEdgeDer(double (*pF)(double, void*), double x1, double x2, double dFdx1, double dFdx2, double RelPrec, void* pv=0); //OC20112018
+	static double Integ1D_Func(double (*pF)(double, void*), double x1, double x2, double RelPrec, void* pv=0); //OC02122018
 
 	//static double Integ1D_FuncDefByArray(double* FuncArr, long Np, double Step);
 	//static double Integ1D_FuncDefByArray(float* FuncArr, long Np, double Step);
@@ -164,7 +166,8 @@ public:
 	template <class T> static double Integ1D_FuncDefByArray(T* FuncArr, long long Np, double Step)
 	{
 		if((FuncArr == 0) || (Np < 2) || (Step == 0)) return 0;
-		if(Np == 2) return (double)(0.5*(FuncArr[0] + FuncArr[1]));
+		//if(Np == 2) return (double)(0.5*(FuncArr[0] + FuncArr[1]));
+		if(Np == 2) return (double)(0.5*Step*(FuncArr[0] + FuncArr[1])); //02122018
 
 		T *tFuncArr = FuncArr + 1;
 		bool NpIsEven = (Np == ((Np >> 1) << 1));
@@ -209,6 +212,31 @@ public:
 
 		if(arResInt1D != 0) delete[] arResInt1D;
 		return res;
+	}
+
+	template <class T> static double FindCoordValForCurveLength(T* pT, double (T::*pdYdX)(double), double curveLen, double xStart, double xStep, int nxMax) //OC01122019
+	{//finds x value for which the y(x) curve length, starting from y(xStart) in the direction given by xStep is equal to curveLen
+		
+		double abs_xStep = ::fabs(xStep);
+		double dYdX = (pT->*pdYdX)(xStart);
+		double curveLenEst = 0.5*abs_xStep*sqrt(1. + dYdX*dYdX);
+		double prevCurveLenEst = 0;
+		double x = xStart + xStep;
+
+		if(curveLenEst < curveLen)
+		{
+			for(int i=1; i<nxMax; i++)
+			{
+				prevCurveLenEst = curveLenEst;
+				dYdX = (pT->*pdYdX)(x);
+				curveLenEst += abs_xStep*sqrt(1. + dYdX*dYdX);
+				if(curveLenEst >= curveLen) break;
+
+				x += xStep;
+			}
+			if(curveLenEst < curveLen) return x; //?
+		}
+		return x - xStep*(curveLenEst - curveLen)/(curveLenEst - prevCurveLenEst);
 	}
 
 	//template <class T> static T tabFunc2D(int ix, int iy, int nx, T* pF)
@@ -275,7 +303,8 @@ public:
 		}
 	}
 
-	template <class T> static T tabTangOrtsToSurf2D(TVector3d& vHorRes, TVector3d& vVertRes, int ix, int iz, int nx, int nz, double xStep, double zStep, T* pF)
+	template <class T> static T tabTangOrtsToSurf2D(TVector3d& vHorRes, TVector3d& vVertRes, long long ix, long long iz, long long nx, long long nz, double xStep, double zStep, T* pF) //OC26042019
+	//template <class T> static T tabTangOrtsToSurf2D(TVector3d& vHorRes, TVector3d& vVertRes, int ix, int iz, int nx, int nz, double xStep, double zStep, T* pF)
 	{//calculates  "horizontal" and "vertical" tangential vector and inner normal (assuming y - longitudinal coordinate)
 	 //returns function value, same as tabFunc2D
 		if((pF == 0) || (nx <= 1) || (nz <= 1)) return (T)0.;

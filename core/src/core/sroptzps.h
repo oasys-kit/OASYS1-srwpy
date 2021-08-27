@@ -88,6 +88,8 @@ public:
 		return 0;
 	}
 
+	//int PropagateRadiationSimple(srTSRWRadStructAccessData* pRadAccessData, void* pBuf=0) //OC06092019
+	//OC01102019 (restored)
 	int PropagateRadiationSimple(srTSRWRadStructAccessData* pRadAccessData)
 	{
 		int result;
@@ -101,11 +103,12 @@ public:
 		return TraverseRad1D(pSect1D);
 	}
 
-	void RadPointModifier(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
+	void RadPointModifier(srTEXZ& EXZ, srTEFieldPtrs& EPtrs, void* pBufVars=0) //OC29082019
+	//void RadPointModifier(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
 	{// e in eV; Length in m !!!
 	 // Operates on Coord. side !!!
 		double xRel = EXZ.x - TransvCenPoint.x, zRel = EXZ.z - TransvCenPoint.y;
-		long Nx = (ZonePlateNumData.DimSizes)[0], Nz = (ZonePlateNumData.DimSizes)[1];
+		long Nx = (long)((ZonePlateNumData.DimSizes)[0]), Nz = (long)((ZonePlateNumData.DimSizes)[1]);
 		long Nxmi2 = Nx - 2, Nzmi2 = Nz - 2;
 		double xStart = (ZonePlateNumData.DimStartValues)[0], zStart = (ZonePlateNumData.DimStartValues)[1];
 		double xStep = (ZonePlateNumData.DimSteps)[0], zStep = (ZonePlateNumData.DimSteps)[1];
@@ -139,11 +142,13 @@ public:
 			*(EPtrs.pEzRe) = NewEzRe; *(EPtrs.pEzIm) = NewEzIm; 
 		}
 	}
-  	void RadPointModifier1D(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
+
+  	void RadPointModifier1D(srTEXZ& EXZ, srTEFieldPtrs& EPtrs, void* pBufVars=0) //OC06092019
+  	//void RadPointModifier1D(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
 	{// e in eV; Length in m !!!
 	 // Operates on Coord. side !!!
 		double xRel = EXZ.x - TransvCenPoint.x, zRel = EXZ.z - TransvCenPoint.y;
-		long Nx = (ZonePlateNumData.DimSizes)[0], Nz = (ZonePlateNumData.DimSizes)[1];
+		long Nx = (long)((ZonePlateNumData.DimSizes)[0]), Nz = (long)((ZonePlateNumData.DimSizes)[1]);
 		long Nxmi2 = Nx - 2, Nzmi2 = Nz - 2;
 		double xStart = (ZonePlateNumData.DimStartValues)[0], zStart = (ZonePlateNumData.DimStartValues)[1];
 		double xStep = (ZonePlateNumData.DimSteps)[0], zStep = (ZonePlateNumData.DimSteps)[1];

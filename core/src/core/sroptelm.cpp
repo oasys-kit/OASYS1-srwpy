@@ -30,6 +30,10 @@
 #include "sropthck.h"
 #include "sroptgrat.h"
 
+#ifdef _WITH_OMP //Pre-processor definition for compiling with OpenMP library
+#include "omp.h"
+#endif
+
 //*************************************************************************
 
 extern srTYield srYield;
@@ -132,7 +136,18 @@ int srTGenOptElem::SetupOpticalElement(srTStringVect* pOptElemInfo, srTDataMD* p
 
 //*************************************************************************
 
-int srTGenOptElem::TraverseRadZXE(srTSRWRadStructAccessData* pRadAccessData)
+int srTGenOptElem::ExtraDataExpected(const char* sElemID) //OC01062020
+{
+	if(sElemID == 0) return 0;
+
+	if((!strcmp(sElemID, "ThinGen")) || (!strcmp(sElemID, "Mirror"))) return 1;
+	else return 0;
+}
+
+//*************************************************************************
+
+int srTGenOptElem::TraverseRadZXE(srTSRWRadStructAccessData* pRadAccessData, void* pBufVars) //OC29082019
+//int srTGenOptElem::TraverseRadZXE(srTSRWRadStructAccessData* pRadAccessData)
 {
 	float *pEx0 = pRadAccessData->pBaseRadX;
 	float *pEz0 = pRadAccessData->pBaseRadZ;
@@ -141,18 +156,20 @@ int srTGenOptElem::TraverseRadZXE(srTSRWRadStructAccessData* pRadAccessData)
 	long long PerX = pRadAccessData->ne << 1;
 	long long PerZ = PerX*pRadAccessData->nx;
 
+#ifndef _WITH_OMP //OC28102018
+
 	srTEFieldPtrs EFieldPtrs;
 	srTEXZ EXZ;
 	EXZ.z = pRadAccessData->zStart;
 	//long izPerZ = 0;
 	//long iTotTest = 0; //OCTEST
 	long long izPerZ = 0;
-	long long iTotTest = 0; //OCTEST
+	//long long iTotTest = 0; //OCTEST
 
-	int result = 0;
+	//int result = 0;
 	for(int iz=0; iz<pRadAccessData->nz; iz++)
 	{
-		if(result = srYield.Check()) return result;
+		//if(result = srYield.Check()) return result;
 
 		float *pEx_StartForX = pEx0 + izPerZ;
 		float *pEz_StartForX = pEz0 + izPerZ;
@@ -167,13 +184,6 @@ int srTGenOptElem::TraverseRadZXE(srTSRWRadStructAccessData* pRadAccessData)
 			EXZ.e = pRadAccessData->eStart;
 			//long iePerE = 0;
 			long long iePerE = 0;
-
-			//DEBUG
-			//if((iz == ((pRadAccessData->nz)>>1)) && (ix == ((pRadAccessData->nx)>>1)))
-			//{
-			//	int aha = 1;
-			//}
-			//END DEBUG
 
 			for(int ie=0; ie<pRadAccessData->ne; ie++)
 			{
@@ -199,9 +209,10 @@ int srTGenOptElem::TraverseRadZXE(srTSRWRadStructAccessData* pRadAccessData)
 				}
 
 				EXZ.aux_offset = izPerZ + ixPerX + iePerE;
-				RadPointModifier(EXZ, EFieldPtrs);
+				RadPointModifier(EXZ, EFieldPtrs, pBufVars); //OC29082019
+				//RadPointModifier(EXZ, EFieldPtrs);
 
-				iTotTest++; //OCTEST
+				//iTotTest++; //OCTEST
 
 				iePerE += 2;
 				EXZ.e += pRadAccessData->eStep;
@@ -212,12 +223,80 @@ int srTGenOptElem::TraverseRadZXE(srTSRWRadStructAccessData* pRadAccessData)
 		izPerZ += PerZ;
 		EXZ.z += pRadAccessData->zStep;
 	}
+
+#else //OC28102018 (does this really need to be parallelized for OpenMP?)
+	//SY: adapted for OpenMP
+	
+	#pragma omp parallel for if (omp_get_num_threads()==1) // to avoid nested multi-threading
+	for(int iz=0; iz<pRadAccessData->nz; iz++)
+	{
+		srTEFieldPtrs EFieldPtrs;
+		long long izPerZ = iz*PerZ;
+		srTEXZ EXZ;
+
+		//SY: to have one-to-one with previous version (so that tests do no fail)
+		//EXZ.z = pRadAccessData->zStart;
+		//for(int i=0; i<iz; i++) EXZ.z += pRadAccessData->zStep;
+		//SY: can be replaced with this
+		EXZ.z = (pRadAccessData->zStart) + iz*(pRadAccessData->zStep);
+
+		float *pEx_StartForX = pEx0 + izPerZ;
+		float *pEz_StartForX = pEz0 + izPerZ;
+		EXZ.x = pRadAccessData->xStart;
+		//long ixPerX = 0;
+		long long ixPerX = 0;
+
+		for(int ix=0; ix<pRadAccessData->nx; ix++)
+		{
+			float *pEx_StartForE = pEx_StartForX + ixPerX;
+			float *pEz_StartForE = pEz_StartForX + ixPerX;
+			EXZ.e = pRadAccessData->eStart;
+			//long iePerE = 0;
+			long long iePerE = 0;
+
+			for(int ie=0; ie<pRadAccessData->ne; ie++)
+			{
+				if(pEx0 != 0)
+				{
+					EFieldPtrs.pExRe = pEx_StartForE + iePerE;
+					EFieldPtrs.pExIm = EFieldPtrs.pExRe + 1;
+				}
+				else
+				{
+					EFieldPtrs.pExRe = 0;
+					EFieldPtrs.pExIm = 0;
+				}
+				if(pEz0 != 0)
+				{
+					EFieldPtrs.pEzRe = pEz_StartForE + iePerE;
+					EFieldPtrs.pEzIm = EFieldPtrs.pEzRe + 1;
+				}
+				else
+				{
+					EFieldPtrs.pEzRe = 0;
+					EFieldPtrs.pEzIm = 0;
+				}
+
+				EXZ.aux_offset = izPerZ + ixPerX + iePerE;
+				RadPointModifier(EXZ, EFieldPtrs, pBufVars); //OC29082019
+				//RadPointModifier(EXZ, EFieldPtrs);
+
+				iePerE += 2;
+				EXZ.e += pRadAccessData->eStep;
+			}
+			ixPerX += PerX;
+			EXZ.x += pRadAccessData->xStep;
+		}
+	}
+#endif
+
 	return 0;
 }
 
 //*************************************************************************
 
-int srTGenOptElem::TraverseRad1D(srTRadSect1D* pSect1D)
+int srTGenOptElem::TraverseRad1D(srTRadSect1D* pSect1D, void* pBufVars) //OC06092019
+//int srTGenOptElem::TraverseRad1D(srTRadSect1D* pSect1D)
 {
 	float *tEx = pSect1D->pEx;
 	float *tEz = pSect1D->pEz;
@@ -238,7 +317,8 @@ int srTGenOptElem::TraverseRad1D(srTRadSect1D* pSect1D)
 		EFieldPtrs.pEzRe = tEz;
 		EFieldPtrs.pEzIm = tEz + 1;
 
-		RadPointModifier1D(EXZ, EFieldPtrs);
+		RadPointModifier1D(EXZ, EFieldPtrs, pBufVars); //OC06092019
+		//RadPointModifier1D(EXZ, EFieldPtrs);
 
 		if(tEx != 0) tEx += 2; 
 		if(tEz != 0) tEz += 2;
@@ -519,65 +599,79 @@ int srTGenOptElem::UpdateGenRadStructFromSlicesConstE_Meth_0(srTSRWRadStructAcce
 **/
 //*************************************************************************
 
-int srTGenOptElem::UpdateGenRadStructSliceConstE_Meth_0(srTSRWRadStructAccessData* pRadDataSliceConstE, int ie, srTSRWRadStructAccessData* pRadAccessData)
+//int srTGenOptElem::UpdateGenRadStructSliceConstE_Meth_0(srTSRWRadStructAccessData* pRadDataSliceConstE, int ie, srTSRWRadStructAccessData* pRadAccessData)
+//OC28102018: modified by S.Yakubov to prepare the code for OpenMP parallelization
+int srTGenOptElem::UpdateGenRadStructSliceConstE_Meth_0(srTSRWRadStructAccessData* pRadDataSliceConstE, int ie, srTSRWRadStructAccessData* pRadAccessData, int update_mode)
 {//Compose the Electric Field of the pRadAccessData from the slices ConstE.
  //The slices are assumed to have same dimensions over nx and nz. 
+
+// SY: update_mode - 1  - compose Electric Field only
+// 					 2  - updates limits and Radii only
+// 					 0  - do all (default)
+// modes are needed for OpenMP stuff
+
 	if((pRadAccessData == 0) || (pRadDataSliceConstE == 0) || (ie < 0)) return 0;
 
-	float *pEx0 = pRadAccessData->pBaseRadX;
-	float *pEz0 = pRadAccessData->pBaseRadZ;
-	
-	int neCom = pRadAccessData->ne;
-	int nxCom = pRadAccessData->nx;
-	int nzCom = pRadAccessData->nz;
-	if(neCom <= 0) return 0;
-
-	//long PerX = neCom << 1;
-	//long PerZ = PerX*nxCom;
-	long long PerX = neCom << 1;
-	long long PerZ = PerX*nxCom;
-
-	//long izPerZ = 0;
-	//long iePerE = ie << 1;
-	long long izPerZ = 0;
-	long long iePerE = ie << 1;
-	float *tSliceEx = pRadDataSliceConstE->pBaseRadX;
-	float *tSliceEz = pRadDataSliceConstE->pBaseRadZ;
-
-	for(int iz=0; iz<nzCom; iz++)
+	if(update_mode == 1 || update_mode == 0) //OC28102018: added by S.Yakubov to prepare the code for OpenMP parallelization
 	{
-		float *pEx_StartForX = pEx0 + izPerZ;
-		float *pEz_StartForX = pEz0 + izPerZ;
-		//long ixPerX = 0;
-		long long ixPerX = 0;
+		float *pEx0 = pRadAccessData->pBaseRadX;
+		float *pEz0 = pRadAccessData->pBaseRadZ;
+	
+		int neCom = pRadAccessData->ne;
+		int nxCom = pRadAccessData->nx;
+		int nzCom = pRadAccessData->nz;
+		if(neCom <= 0) return 0;
 
-		for(int ix=0; ix<pRadAccessData->nx; ix++)
+		//long PerX = neCom << 1;
+		//long PerZ = PerX*nxCom;
+		long long PerX = neCom << 1;
+		long long PerZ = PerX*nxCom;
+
+		//long izPerZ = 0;
+		//long iePerE = ie << 1;
+		long long izPerZ = 0;
+		long long iePerE = ie << 1;
+		float *tSliceEx = pRadDataSliceConstE->pBaseRadX;
+		float *tSliceEz = pRadDataSliceConstE->pBaseRadZ;
+
+		for(int iz=0; iz<nzCom; iz++)
 		{
-			//long ixPerX_p_iePerE = ixPerX + iePerE;
-			long long ixPerX_p_iePerE = ixPerX + iePerE;
-			float *pEx = pEx_StartForX + ixPerX_p_iePerE;
-			float *pEz = pEz_StartForX + ixPerX_p_iePerE;
+			float *pEx_StartForX = pEx0 + izPerZ;
+			float *pEz_StartForX = pEz0 + izPerZ;
+			//long ixPerX = 0;
+			long long ixPerX = 0;
 
-			*(pEx++) = *(tSliceEx++); *pEx = *(tSliceEx++);
-			*(pEz++) = *(tSliceEz++); *pEz = *(tSliceEz++);
+			for(int ix=0; ix<pRadAccessData->nx; ix++)
+			{
+				//long ixPerX_p_iePerE = ixPerX + iePerE;
+				long long ixPerX_p_iePerE = ixPerX + iePerE;
+				float *pEx = pEx_StartForX + ixPerX_p_iePerE;
+				float *pEz = pEz_StartForX + ixPerX_p_iePerE;
 
-			ixPerX += PerX;
+				*(pEx++) = *(tSliceEx++); *pEx = *(tSliceEx++);
+				*(pEz++) = *(tSliceEz++); *pEz = *(tSliceEz++);
+
+				ixPerX += PerX;
+			}
+			izPerZ += PerZ;
 		}
-		izPerZ += PerZ;
 	}
 
-	//Update wavefront limits in the main rad. structure:
-	if(pRadAccessData->xWfrMin > pRadDataSliceConstE->xWfrMin) pRadAccessData->xWfrMin = pRadDataSliceConstE->xWfrMin;
-	if(pRadAccessData->xWfrMax < pRadDataSliceConstE->xWfrMax) pRadAccessData->xWfrMax = pRadDataSliceConstE->xWfrMax;
-	if(pRadAccessData->zWfrMin > pRadDataSliceConstE->zWfrMin) pRadAccessData->zWfrMin = pRadDataSliceConstE->zWfrMin;
-	if(pRadAccessData->zWfrMax < pRadDataSliceConstE->zWfrMax) pRadAccessData->zWfrMax = pRadDataSliceConstE->zWfrMax;
+	if(update_mode == 2 || update_mode == 0) //OC28102018: added by S.Yakubov to prepare the code for OpenMP parallelization
+	{
+		//Update wavefront limits in the main rad. structure:
+		if(pRadAccessData->xWfrMin > pRadDataSliceConstE->xWfrMin) pRadAccessData->xWfrMin = pRadDataSliceConstE->xWfrMin;
+		if(pRadAccessData->xWfrMax < pRadDataSliceConstE->xWfrMax) pRadAccessData->xWfrMax = pRadDataSliceConstE->xWfrMax;
+		if(pRadAccessData->zWfrMin > pRadDataSliceConstE->zWfrMin) pRadAccessData->zWfrMin = pRadDataSliceConstE->zWfrMin;
+		if(pRadAccessData->zWfrMax < pRadDataSliceConstE->zWfrMax) pRadAccessData->zWfrMax = pRadDataSliceConstE->zWfrMax;
 
-	//Update wavefront radii in the main rad. structure (making average?):
-	double inv_ie_p_1 = 1./(ie + 1);
-	pRadAccessData->RobsX = (ie*(pRadAccessData->RobsX) + pRadDataSliceConstE->RobsX)*inv_ie_p_1;
-	pRadAccessData->RobsZ = (ie*(pRadAccessData->RobsZ) + pRadDataSliceConstE->RobsZ)*inv_ie_p_1;
-	pRadAccessData->RobsXAbsErr = (ie*(pRadAccessData->RobsXAbsErr) + pRadDataSliceConstE->RobsXAbsErr)*inv_ie_p_1;
-	pRadAccessData->RobsZAbsErr = (ie*(pRadAccessData->RobsZAbsErr) + pRadDataSliceConstE->RobsZAbsErr)*inv_ie_p_1;
+		//Update wavefront radii in the main rad. structure (making average?):
+		double inv_ie_p_1 = 1./(ie + 1);
+		pRadAccessData->RobsX = (ie*(pRadAccessData->RobsX) + pRadDataSliceConstE->RobsX)*inv_ie_p_1;
+		pRadAccessData->RobsZ = (ie*(pRadAccessData->RobsZ) + pRadDataSliceConstE->RobsZ)*inv_ie_p_1;
+		pRadAccessData->RobsXAbsErr = (ie*(pRadAccessData->RobsXAbsErr) + pRadDataSliceConstE->RobsXAbsErr)*inv_ie_p_1;
+		pRadAccessData->RobsZAbsErr = (ie*(pRadAccessData->RobsZAbsErr) + pRadDataSliceConstE->RobsZAbsErr)*inv_ie_p_1;
+	}
 
 	//assuming that the mesh in all slices is transformed the same way
 	//if(ie == (pRadAccessData->ne - 1)) //OC151008 //commented-out
@@ -587,10 +681,8 @@ int srTGenOptElem::UpdateGenRadStructSliceConstE_Meth_0(srTSRWRadStructAccessDat
 	//	if(pRadAccessData->zStart != pRadDataSliceConstE->zStart) pRadAccessData->zStart = pRadDataSliceConstE->zStart;
 	//	if(pRadAccessData->zStep != pRadDataSliceConstE->zStep) pRadAccessData->zStep = pRadDataSliceConstE->zStep;
 	//}
-
 	return 0;
 }
-
 
 //*************************************************************************
 
@@ -642,6 +734,12 @@ int srTGenOptElem::RemoveSliceConstE_FromGenRadStruct(srTSRWRadStructAccessData*
 int srTGenOptElem::SetupWfrEdgeCorrData(srTSRWRadStructAccessData* pRadAccessData, float* pDataEx, float* pDataEz, srTDataPtrsForWfrEdgeCorr& DataPtrsForWfrEdgeCorr)
 {
 	int result;
+
+	//OC17052020
+	if(pRadAccessData->xWfrMax <= pRadAccessData->xStart) return 0;
+	else if(pRadAccessData->xWfrMin >= (pRadAccessData->xStart + (pRadAccessData->xStep)*(pRadAccessData->nx - 1))) return 0;
+	if(pRadAccessData->zWfrMax <= pRadAccessData->zStart) return 0;
+	else if(pRadAccessData->zWfrMin >= (pRadAccessData->zStart + (pRadAccessData->zStep)*(pRadAccessData->nz - 1))) return 0;
 
 	double xAbsTol = 0.05*pRadAccessData->xStep;
 	double zAbsTol = 0.05*pRadAccessData->zStep;
@@ -850,6 +948,10 @@ int srTGenOptElem::SetupWfrEdgeCorrData(srTSRWRadStructAccessData* pRadAccessDat
 int srTGenOptElem::SetupWfrEdgeCorrData1D(srTRadSect1D* pRadSect1D, float* pDataEx, float* pDataEz, srTDataPtrsForWfrEdgeCorr1D& DataPtrsForWfrEdgeCorr)
 {
 	//int result;
+	//OC17052020
+	if(pRadSect1D->WfrMax <= pRadSect1D->ArgStart) return 0;
+	else if(pRadSect1D->WfrMin >= (pRadSect1D->ArgStart + (pRadSect1D->ArgStep)*(pRadSect1D->np - 1))) return 0;
+
 	double AbsTol = 0.05*pRadSect1D->ArgStep;
 
 	double WfrMinOffsetFromStart = pRadSect1D->WfrMin - pRadSect1D->ArgStart;
@@ -1106,6 +1208,10 @@ int srTGenOptElem::SetRadRepres(srTSRWRadStructAccessData* pRadAccessData, char 
 {// 0- to coord.; 1- to ang.
 	int result;
 
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//double start;
+	//get_walltime(&start);
+
 	char WfrEdgeCorrShouldBeTreated = pRadAccessData->WfrEdgeCorrShouldBeDone; // Turn on/off here
 
 	if(pRadAccessData->Pres == CoordOrAng) return 0;
@@ -1129,10 +1235,13 @@ int srTGenOptElem::SetRadRepres(srTSRWRadStructAccessData* pRadAccessData, char 
 	}
 //End New
 
-	CGenMathFFT2D FFT2D;
+	//CGenMathFFT2D FFT2D;
+	//OC28102018 (modified by SY)
 
 	if(pRadAccessData->ne == 1)
 	{
+		CGenMathFFT2D FFT2D; //OC28102018 (modified by SY)
+
 		srTDataPtrsForWfrEdgeCorr DataPtrsForWfrEdgeCorr;
 		if(WfrEdgeCorrShouldBeTreated)
 		{
@@ -1181,6 +1290,11 @@ int srTGenOptElem::SetRadRepres(srTSRWRadStructAccessData* pRadAccessData, char 
 		//This is the original version; works by "slices"
 		//long TwoNxNz = (pRadAccessData->nx*pRadAccessData->nz) << 1;
 		long long TwoNxNz = (((long long)(pRadAccessData->nx))*((long long)(pRadAccessData->nz))) << 1;
+
+		CGenMathFFT2D FFT2D; //OC28102018 (modified by SY)
+
+#ifndef _WITH_OMP //OC28102018
+
 		float* AuxEx = new float[TwoNxNz];
 		if(AuxEx == 0) return MEMORY_ALLOCATION_FAILURE;
 		float* AuxEz = new float[TwoNxNz];
@@ -1222,11 +1336,99 @@ int srTGenOptElem::SetRadRepres(srTSRWRadStructAccessData* pRadAccessData, char 
 
 			if(result = SetupRadSliceConstE(pRadAccessData, ie, AuxEx, AuxEz)) return result;
 		}
-
 		if(AuxEx != 0) delete[] AuxEx;
 		if(AuxEz != 0) delete[] AuxEz;
 		//}
+#else //OC28102018: modified by SY
+
+		//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+		//srwlPrintTime("SetRadRepres : setup",&start);
+
+		//SY: return outside of parallel regions is not allowed - we do it outside
+
+		int* results = new int[pRadAccessData->ne];
+		if(results == 0) return MEMORY_ALLOCATION_FAILURE;
+		for(long ie = 0; ie < pRadAccessData->ne; ie++) results[ie]=0;
+
+		//SY: creation (and deletion) of FFTW plans is not thread-safe. Have to do this outside of threads.
+		//(and we don't need to recreate plans for same dimensions anyway)
+		fftwnd_plan Plan2DFFT;
+		if(FFT2DInfo.Dir > 0) Plan2DFFT = fftw2d_create_plan(FFT2DInfo.Ny, FFT2DInfo.Nx, FFTW_FORWARD, FFTW_IN_PLACE|FFTW_THREADSAFE);
+		else Plan2DFFT = fftw2d_create_plan(FFT2DInfo.Ny, FFT2DInfo.Nx, FFTW_BACKWARD, FFTW_IN_PLACE|FFTW_THREADSAFE);
+
+		#pragma omp parallel
+		{
+			CGenMathFFT2D FFT2D;
+
+			//SY: allocate arrays for each thread (not for each ie)
+			float* AuxEx = new float[TwoNxNz];
+			float* AuxEz = new float[TwoNxNz];
+			if(AuxEz != 0 && AuxEz!=0)
+			{
+				#pragma omp for
+				for(long ie = 0; ie < pRadAccessData->ne; ie++)
+				{
+					//SY: use private variable FFT2DInfo_local instead of FFT2DInfo as its
+					//members are changed inside Make2DFFT.
+					CGenMathFFT2DInfo FFT2DInfo_local = FFT2DInfo;
+
+					if(results[ie] = ExtractRadSliceConstE(pRadAccessData, ie, AuxEx, AuxEz)) continue;
+
+					srTDataPtrsForWfrEdgeCorr DataPtrsForWfrEdgeCorr;
+					if(WfrEdgeCorrShouldBeTreated)
+					{
+						if(CoordOrAng == 1)
+						{
+							if(results[ie] = SetupWfrEdgeCorrData(pRadAccessData, AuxEx, AuxEz, DataPtrsForWfrEdgeCorr)) continue;
+						}
+					}
+
+					//After the FFT, all slices will be authomatically brought to the same mesh
+					if(ar_xStartInSlicesE != 0) FFT2DInfo_local.xStart = ar_xStartInSlicesE[ie];
+					if(ar_zStartInSlicesE != 0) FFT2DInfo_local.yStart = ar_zStartInSlicesE[ie];
+
+					FFT2DInfo_local.pData = AuxEx;
+					if(results[ie] = FFT2D.Make2DFFT(FFT2DInfo_local, &Plan2DFFT)) continue;
+
+					FFT2DInfo_local.pData = AuxEz;
+					if(results[ie] = FFT2D.Make2DFFT(FFT2DInfo_local, &Plan2DFFT)) continue;
+
+					if(WfrEdgeCorrShouldBeTreated)
+					{
+						if(CoordOrAng == 1)
+						{
+							if(DataPtrsForWfrEdgeCorr.WasSetup)
+							{
+								MakeWfrEdgeCorrection(pRadAccessData, AuxEx, AuxEz, DataPtrsForWfrEdgeCorr);
+								DataPtrsForWfrEdgeCorr.DisposeData();
+							}
+						}
+					}
+					results[ie] = SetupRadSliceConstE(pRadAccessData, ie, AuxEx, AuxEz);
+					//SY: save FFT2DInfo from one of FFT2DInfo_local
+					if(ie == 0) FFT2DInfo = FFT2DInfo_local;
+				} // end for
+			}
+			else
+			{
+				results[omp_get_thread_num()] = MEMORY_ALLOCATION_FAILURE;
+			}  // end if
+			if(AuxEx != 0) delete[] AuxEx;
+			if(AuxEz != 0) delete[] AuxEz;
+
+		} // end omp parallel
+
+		fftwnd_destroy_plan(Plan2DFFT);
+
+		for(long ie = 0; ie < pRadAccessData->ne; ie++) if(results[ie]) return results[ie];
+		delete[] results;
+#endif
 	}
+
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//char str[256];
+	//sprintf(str,"%s %d","::SetRadRepres : cycles:",pRadAccessData->ne);
+	//srwlPrintTime(str,&start);
 
 	pRadAccessData->xStep = FFT2DInfo.xStepTr;
 	pRadAccessData->zStep = FFT2DInfo.yStepTr;
@@ -1323,6 +1525,10 @@ int srTGenOptElem::ComputeRadMoments(srTSRWRadStructAccessData* pSRWRadStructAcc
 {// Here Lengths are in m and Phot energy in eV!
  // This function seems to work correctly only in Frequency-Coordinate representation
 
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//double start;
+	//get_walltime (&start);
+
 	if((pSRWRadStructAccessData->nx <= 1) && (pSRWRadStructAccessData->nz <= 1)) return 0; //OC090112 or return error?
 
 	const double TwoPi = 3.141592653590*2.;
@@ -1331,10 +1537,14 @@ int srTGenOptElem::ComputeRadMoments(srTSRWRadStructAccessData* pSRWRadStructAcc
 	const double Inv_eV_In_m = 1.239842E-06;
 
 	srTAuxMatStat AuxMatStat; //OC13112010 (uncommented)
-	int IndLims[4];
+	//int IndLims[4]; //OC28102018
 	const double RelPowForLimits = 0.9; //to steer
 	
+#ifndef _WITH_OMP //OC28102018
 	CHGenObj hRad(pSRWRadStructAccessData, true); //OC13112010
+	double SumsX[22], SumsZ[22], ff[22]; //OC28102018
+	int IndLims[4]; //OC28102018
+#endif
 	int result = 0;
 
 	//if(pSRWRadStructAccessData->Pres != 0)
@@ -1353,7 +1563,10 @@ int srTGenOptElem::ComputeRadMoments(srTSRWRadStructAccessData* pSRWRadStructAcc
 		WaveFrontTermWasTreated = 1;
 	}
 
-	double SumsX[22], SumsZ[22], ff[22];
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//srwlPrintTime(":ComputeRadMoments : TreatStronglyOscillatingTerm 1",&start);
+
+	//double SumsX[22], SumsZ[22], ff[22]; //OC28102018
 
 	float *fpX0 = pSRWRadStructAccessData->pBaseRadX;
 	float *fpZ0 = pSRWRadStructAccessData->pBaseRadZ;
@@ -1368,11 +1581,13 @@ int srTGenOptElem::ComputeRadMoments(srTSRWRadStructAccessData* pSRWRadStructAcc
 	int nx_mi_1 = pSRWRadStructAccessData->nx - 1;
 	int nz_mi_1 = pSRWRadStructAccessData->nz - 1;
 
-	double ePh = pSRWRadStructAccessData->eStart; //This assumes wavefront in Time domain; Photon Energy in eV !
+	//double ePh = pSRWRadStructAccessData->eStart; //This assumes wavefront in Time (Frequency?!) domain; Photon Energy in eV !
+	//OC28102018 (commented-out, moved into cycle, as suggested by SY)
 	//If wavefront is in Time-domain representation, average photon energy should be used
-
 	//float *fpMomX = pSRWRadStructAccessData->pMomX, *fpMomZ = pSRWRadStructAccessData->pMomZ;
-	double *fpMomX = pSRWRadStructAccessData->pMomX, *fpMomZ = pSRWRadStructAccessData->pMomZ; //130311
+	//double *fpMomX = pSRWRadStructAccessData->pMomX, *fpMomZ = pSRWRadStructAccessData->pMomZ; //OC130311
+	//OC28102018 (commented-out, moved into cycle, as suggested by SY)
+
 	int AmOfMom = 11;
 
 	double InvStepX = 1./pSRWRadStructAccessData->xStep;
@@ -1383,8 +1598,25 @@ int srTGenOptElem::ComputeRadMoments(srTSRWRadStructAccessData* pSRWRadStructAcc
 	char ActualScanZ = (pSRWRadStructAccessData->nz > 1);
 	char ActualScansXZ = (ActualScanX && ActualScanZ);
 
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//srwlPrintTime(":ComputeRadMoments : setup",&start);
+
+#ifdef _WITH_OMP //OC28102018: added by SY
+	#pragma omp parallel for
+#endif
+
 	for(int ie=0; ie<pSRWRadStructAccessData->ne; ie++)
 	{
+#ifdef _WITH_OMP //OC28102018: modified by SY
+		CHGenObj hRad(pSRWRadStructAccessData, true); //OC13112010
+		double SumsX[22], SumsZ[22], ff[22];
+		int IndLims[4];
+#endif
+		//If wavefront is in Time-domain representation, average photon energy should be used
+		double *fpMomX = pSRWRadStructAccessData->pMomX + ie*AmOfMom;
+		double *fpMomZ = pSRWRadStructAccessData->pMomZ + ie*AmOfMom; //OC130311
+		double ePh = pSRWRadStructAccessData->eStart + pSRWRadStructAccessData->eStep*ie; //This assumes wavefront in Time domain; Photon Energy in eV !
+
 		if(!IsFreqRepres)
 		{
 			ePh = pSRWRadStructAccessData->avgPhotEn; //?? OC041108
@@ -1430,7 +1662,7 @@ int srTGenOptElem::ComputeRadMoments(srTSRWRadStructAccessData* pSRWRadStructAcc
 		for(int iz=0; iz<pSRWRadStructAccessData->nz; iz++)
 		//for(int iz=IndLims[2]; iz<=IndLims[3]; iz++)
 		{
-			if(result = srYield.Check()) return result;
+			//if(result = srYield.Check()) return result; //OC28102018 (commented-out due to potential incompatibility with OpenMP parallelization)
 
 			bool vertCoordInsidePowLim = ((iz >= IndLims[2]) && (iz <= IndLims[3]));
 
@@ -1753,11 +1985,21 @@ int srTGenOptElem::ComputeRadMoments(srTSRWRadStructAccessData* pSRWRadStructAcc
 			}
 		}
 		
-		ePh += pSRWRadStructAccessData->eStep;
-		fpMomX += AmOfMom; fpMomZ += AmOfMom;
+		//ePh += pSRWRadStructAccessData->eStep;
+		//fpMomX += AmOfMom; fpMomZ += AmOfMom;
+		//OC28102018 (commented-out, following suggestion of SY)
 	}
 
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//char str[256];
+	//sprintf(str,"%s %d",":ComputeRadMoments : cycles:",pSRWRadStructAccessData->ne);
+	//srwlPrintTime(str,&start);
+
 	if(WaveFrontTermWasTreated) TreatStronglyOscillatingTerm(*pSRWRadStructAccessData, 'a');
+
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//srwlPrintTime(":ComputeRadMoments : TreatStronglyOscillatingTerm 2",&start);
+
 	pSRWRadStructAccessData->MomWereCalcNum = true;
 	return 0;
 }
@@ -1913,8 +2155,44 @@ void srTGenOptElem::FindMinMaxRatio(double* Arr1, double* Arr2, int n, double& M
 
 int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessData, srTRadResize& RadResizeStruct)
 {
-	if((RadResizeStruct.pxm == 1.) && (RadResizeStruct.pxd == 1.) && (RadResizeStruct.pzm == 1.) && (RadResizeStruct.pzd == 1.)) return 0;
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//double start;
+	//get_walltime(&start);
+
+	//if((RadResizeStruct.pxm == 1.) && (RadResizeStruct.pxd == 1.) && (RadResizeStruct.pzm == 1.) && (RadResizeStruct.pzd == 1.)) return 0;
+	if((RadResizeStruct.pxm == 1.) && (RadResizeStruct.pxd == 1.) && (RadResizeStruct.pzm == 1.) && (RadResizeStruct.pzd == 1.) && (RadResizeStruct.ShiftTypeBeforeRes <= 0)) return 0; //OC11072019
 	int result = 0;
+
+	//OC11072019
+	char shTyp = RadResizeStruct.ShiftTypeBeforeRes;
+	if((RadResizeStruct.eCenShift > 0) && (shTyp & 4)) //((shTyp == 4) || (shTyp == 6) || (shTyp == 5) || (shTyp == 7)) //shift vs E required
+	{
+		double reTot = SRWRadStructAccessData.eStep*(SRWRadStructAccessData.ne - 1);
+		double reLeft = RadResizeStruct.eCenShift - SRWRadStructAccessData.eStart;
+		if((reLeft > 0.) && (RadResizeStruct.eCenShift < (SRWRadStructAccessData.eStart + reTot)))
+		{
+			RadResizeStruct.RelCenPosE = reLeft/reTot;
+		}
+	}
+	if(shTyp & 1) //((shTyp == 1) || (shTyp == 3) || (shTyp == 5) || (shTyp == 7))) //shift vs X required
+	{
+		double rxTot = SRWRadStructAccessData.xStep*(SRWRadStructAccessData.nx - 1);
+		//double rxTot = SRWRadStructAccessData.xStep*SRWRadStructAccessData.nx;
+		double rxLeft = RadResizeStruct.xCenShift - SRWRadStructAccessData.xStart;
+		if((rxLeft > 0.) && (RadResizeStruct.xCenShift < (SRWRadStructAccessData.xStart + rxTot)))
+		{
+			RadResizeStruct.RelCenPosX = rxLeft/rxTot;
+		}
+	}
+	if(shTyp & 2) //((shTyp == 2) || (shTyp == 3) || (shTyp == 6) || (shTyp == 7)) //shift vs Z required
+	{
+		double rzTot = SRWRadStructAccessData.zStep*(SRWRadStructAccessData.nz - 1);
+		double rzLeft = RadResizeStruct.zCenShift - SRWRadStructAccessData.zStart;
+		if((rzLeft > 0.) && (RadResizeStruct.zCenShift < (SRWRadStructAccessData.zStart + rzTot)))
+		{
+			RadResizeStruct.RelCenPosZ = rzLeft/rzTot;
+		}
+	}
 
 	bool ExIsOK = SRWRadStructAccessData.pBaseRadX != 0;
 	bool EzIsOK = SRWRadStructAccessData.pBaseRadZ != 0;
@@ -1968,6 +2246,9 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 	long NewNx = SRWRadStructAccessData.nx; 
 	long NewNz = SRWRadStructAccessData.nz; 
 
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//srwlPrintTime(":RadResizeGen: set parameters",&start);
+
 	CGenMathFFT2D FFT;
 	char RadShouldBeChanged = ((pxTot != 1.) || (pzTot != 1.));
 	if(RadShouldBeChanged)
@@ -1986,6 +2267,9 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 		NewSRWRadStructAccessData.nx = NewNx;
 		NewSRWRadStructAccessData.nz = NewNz;
 	}
+
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//srwlPrintTime(":RadResizeGen: if RadShouldBeChanged",&start);
 
 	char CenterIsOffset = 0;
 	long iXc = (SRWRadStructAccessData.nx >> 1);
@@ -2138,6 +2422,9 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 		}
 	}
 
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//srwlPrintTime(":RadResizeGen: CenterIsOffset",&start);
+
 	//long TotAmOfOldData = (SRWRadStructAccessData.ne*SRWRadStructAccessData.nx*SRWRadStructAccessData.nz) << 1;
 	//long TotAmOfNewData = (NewSRWRadStructAccessData.ne*NewSRWRadStructAccessData.nx*NewSRWRadStructAccessData.nz) << 1;
 	long long TotAmOfOldData = (((long long)SRWRadStructAccessData.ne)*((long long)SRWRadStructAccessData.nx)*((long long)SRWRadStructAccessData.nz)) << 1;
@@ -2154,6 +2441,9 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 		double SecurityMemResizeCoef = 0.95; //to tune
 		TreatPolarizSepar = (ExtraMemSize > SecurityMemResizeCoef*MemoryAvail)? 1 : 0;
 	}
+
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//srwlPrintTime(":RadResizeGen: TreatPolarizSepar memory",&start);
 
 	float *OldRadXCopy = 0, *OldRadZCopy = 0;
 	if(!TreatPolarizSepar)
@@ -2175,32 +2465,56 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 				*(tOldRadXCopy++) = *(tBaseRadX++);
 				*(tOldRadZCopy++) = *(tBaseRadZ++);
 			}
+			//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+			//srwlPrintTime(":RadResizeGen: memalloc",&start);
 			
 			if(RadShouldBeChanged)
 			{
 				if(NewSRWRadStructAccessData.BaseRadWasEmulated) 
 				{
 					if(result = NewSRWRadStructAccessData.ReAllocBaseRadAccordingToNeNxNz()) return result;
+					
+					//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+					//srwlPrintTime(":RadResizeGen: TreatPolarizSepar-ReAllocBaseRadAccordingToNeNxNz",&start);
 				}
 				//else if(result = Send.ModifyRadNeNxNz(NewSRWRadStructAccessData)) return result;
 				else if(result = NewSRWRadStructAccessData.ModifyWfrNeNxNz()) return result;
+
+				//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+				//srwlPrintTime(":RadResizeGen: ModifyWfrNeNxNz",&start);
 			}
+			//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+			//srwlPrintTime(":RadResizeGen: RadShouldBeChanged",&start);
 			
 			tBaseRadX = NewSRWRadStructAccessData.pBaseRadX;
 			tBaseRadZ = NewSRWRadStructAccessData.pBaseRadZ;
-			//for(long j=0; j<TotAmOfNewData; j++)
+
+#ifdef _WITH_OMP //OC28102018: modification by SY
+			#pragma omp parallel for if (omp_get_num_threads()==1) // to avoid nested multi-threading
+			for(long long j=0; j<TotAmOfNewData; j++)
+			{
+				tBaseRadX[j] = 0.; tBaseRadZ[j] = 0.; 
+			}
+#else
 			for(long long j=0; j<TotAmOfNewData; j++)
 			{
 				*(tBaseRadX++) = 0.; *(tBaseRadZ++) = 0.; 
 			}
+#endif
 			
 			SRWRadStructAccessData.pBaseRadX = OldRadXCopy;
 			SRWRadStructAccessData.pBaseRadZ = OldRadZCopy;
+
+			//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+			//srwlPrintTime(":RadResizeGen: copydata",&start);
 			
 			if(result = RadResizeCore(SRWRadStructAccessData, NewSRWRadStructAccessData, RadResizeStruct)) return result;
 			
 			if(OldRadXCopy != 0) delete[] OldRadXCopy;
 			if(OldRadZCopy != 0) delete[] OldRadZCopy;
+
+			//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+			//srwlPrintTime(":RadResizeGen: RadResizeCore 1",&start);
 		}
 		else
 		{
@@ -2209,6 +2523,9 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 			if(NewSRWRadStructAccessData.BaseRadWasEmulated) 
 			{
 				if(result = NewSRWRadStructAccessData.AllocBaseRadAccordingToNeNxNz()) return result;
+
+				//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+				//srwlPrintTime(":RadResizeGen: AllocBaseRadAccordingToNeNxNz",&start);
 			}
 			else
 			{
@@ -2230,6 +2547,9 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 #endif
 #if defined(SRWLIB_STATIC) || defined(SRWLIB_SHARED) //OC161115
 				if(result = NewSRWRadStructAccessData.ModifyWfrNeNxNz(0, true)) return result;
+
+				//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+				//srwlPrintTime(":RadResizeGen: TreatPolarizSepar-ModifyWfrNeNxNz",&start);
 				//OCTEST
 				//SRWRadStructAccessData.pBaseRadX = NewSRWRadStructAccessData.pBaseRadXaux;
 				//SRWRadStructAccessData.pBaseRadZ = NewSRWRadStructAccessData.pBaseRadZaux;
@@ -2237,13 +2557,26 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 			}
 			
 			float *tRadX = NewSRWRadStructAccessData.pBaseRadX, *tRadZ = NewSRWRadStructAccessData.pBaseRadZ;
-			//for(long j=0; j<TotAmOfNewData; j++)
+
+#ifdef _WITH_OMP //OC28102018: modified by SY
+			#pragma omp parallel for if (omp_get_num_threads()==1) // to avoid nested multi-threading
+			for(long long j=0; j<TotAmOfNewData; j++)
+			{
+				tRadX[j] = 0.; tRadZ[j] = 0.;
+			}
+#else
 			for(long long j=0; j<TotAmOfNewData; j++)
 			{
 				*(tRadX++) = 0.; *(tRadZ++) = 0.; 
 			}
+#endif
+			//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+			//srwlPrintTime(":RadResizeGen: TreatPolarizSepar-PrepareStructs",&start);
 
 			if(result = RadResizeCore(SRWRadStructAccessData, NewSRWRadStructAccessData, RadResizeStruct)) return result;
+
+			//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+			//srwlPrintTime(":RadResizeGen: RadResizeCore 2",&start);
 
 			if(NewSRWRadStructAccessData.BaseRadWasEmulated) 
 			{
@@ -2303,6 +2636,9 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 				if(result = RadResizeCore(SRWRadStructAccessData, NewSRWRadStructAccessData, RadResizeStruct, 'x')) return result;
 				if(OldRadXCopy != 0) delete[] OldRadXCopy;
 			}
+			//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+			//srwlPrintTime(":RadResizeGen: TreatPolarizSepar-ExIsOK1",&start);
+
 			if(EzIsOK)
 			{
 				OldRadZCopy = new float[TotAmOfOldData];
@@ -2336,6 +2672,8 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 				if(result = RadResizeCore(SRWRadStructAccessData, NewSRWRadStructAccessData, RadResizeStruct, 'z')) return result;
 				if(OldRadZCopy != 0) delete[] OldRadZCopy;
 			}
+			//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+			//srwlPrintTime(":RadResizeGen: TreatPolarizSepar-EzIsOK1",&start);
 		}
 		else
 		{
@@ -2361,7 +2699,7 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 				if(result = NewSRWRadStructAccessData.CreateNewWfrStruct(RadStructNames)) return result;		
 #endif
 #if defined(SRWLIB_STATIC) || defined(SRWLIB_SHARED) //OC161115
-				if (result = NewSRWRadStructAccessData.ModifyWfrNeNxNz('x', true)) return result;
+				if(result = NewSRWRadStructAccessData.ModifyWfrNeNxNz('x', true)) return result;
 #endif
 				float *tRadX = NewSRWRadStructAccessData.pBaseRadX;
 				//for(long j=0; j<TotAmOfNewData; j++) *(tRadX++) = 0.;
@@ -2380,6 +2718,8 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 				if (result = NewSRWRadStructAccessData.DeleteWfrBackupData('x')) return result;
 #endif
 			}
+			//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+			//srwlPrintTime(":RadResizeGen: TreatPolarizSepar-ExIsOK2",&start);
 //Ez
 			if(EzIsOK)
 			{
@@ -2412,7 +2752,11 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 			if(result = NewSRWRadStructAccessData.RenameWfrStruct(OldRadStructNames)) return result;
 #endif
 		}
+		//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+		//srwlPrintTime(":RadResizeGen: TreatPolarizSepar-EzIsOK2",&start);
 	}
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//srwlPrintTime(":RadResizeGen: TreatPolarizSepar",&start);
 
 	SRWRadStructAccessData = NewSRWRadStructAccessData;
 	NewSRWRadStructAccessData.ZeroPtrs();
@@ -2438,6 +2782,8 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 		RadResizeStruct.pxm = pxmNew; RadResizeStruct.pxd = pxdNew;
 		RadResizeStruct.pzm = pzmNew; RadResizeStruct.pzd = pzdNew;
 	}
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//srwlPrintTime(":RadResizeGen: useOtherSideFFT",&start);
 
 	return 0;
 }
@@ -2446,11 +2792,18 @@ int srTGenOptElem::RadResizeGen(srTSRWRadStructAccessData& SRWRadStructAccessDat
 
 int srTGenOptElem::RadResizeCore(srTSRWRadStructAccessData& OldRadAccessData, srTSRWRadStructAccessData& NewRadAccessData, srTRadResize& RadResizeStruct, char PolComp)
 {
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//double start;
+	//get_walltime(&start);
+
 	const double RelStepTol = 1.e-05; // To steer
 	char OnlyMakeLargerRange = ((RadResizeStruct.pxd == 1.) && (RadResizeStruct.pzd == 1.) && (RadResizeStruct.pxm >= 1.) && (RadResizeStruct.pzm >= 1.)) 
 							&& ((::fabs(OldRadAccessData.xStep - NewRadAccessData.xStep) < RelStepTol) && (::fabs(OldRadAccessData.zStep - NewRadAccessData.zStep) < RelStepTol));
 
 	if(OnlyMakeLargerRange) return RadResizeCore_OnlyLargerRange(OldRadAccessData, NewRadAccessData, RadResizeStruct, PolComp);
+
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//srwlPrintTime(":RadResizeCore: RadResizeCore_OnlyLargerRange",&start);
 
 	char TreatPolCompX = ((PolComp == 0) || (PolComp == 'x'));
 	char TreatPolCompZ = ((PolComp == 0) || (PolComp == 'z'));
@@ -2466,13 +2819,22 @@ int srTGenOptElem::RadResizeCore(srTSRWRadStructAccessData& OldRadAccessData, sr
 	bool OrigWfrQuadTermCanBeTreatedAtResizeX = OldRadAccessData.WfrQuadTermCanBeTreatedAtResizeX;
 	bool OrigWfrQuadTermCanBeTreatedAtResizeZ = OldRadAccessData.WfrQuadTermCanBeTreatedAtResizeZ;
 
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//srwlPrintTime(":RadResizeCore: init variables 1",&start);
+
 	//if((!RadResizeStruct.DoNotTreatSpherTerm) && WaveFrontTermCanBeTreated(OldRadAccessData))
 	if((!RadResizeStruct.doNotTreatSpherTerm()) && WaveFrontTermCanBeTreated(OldRadAccessData)) //OC090311
 	{
+		//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+		//srwlPrintTime(":RadResizeCore: doNotTreatSpherTerm+WaveFrontTermCanBeTreated",&start);
+
 		NewRadAccessData.WfrQuadTermCanBeTreatedAtResizeX = OldRadAccessData.WfrQuadTermCanBeTreatedAtResizeX;
 		NewRadAccessData.WfrQuadTermCanBeTreatedAtResizeZ = OldRadAccessData.WfrQuadTermCanBeTreatedAtResizeZ;
 
 		TreatStronglyOscillatingTerm(OldRadAccessData, 'r', PolComp);
+
+		//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+		//srwlPrintTime(":RadResizeCore: TreatStronglyOscillatingTerm 1",&start);
 
 		NewRadAccessData.wfrReffX = OldRadAccessData.wfrReffX;
 		NewRadAccessData.wfrReffZ = OldRadAccessData.wfrReffZ;
@@ -2487,11 +2849,11 @@ int srTGenOptElem::RadResizeCore(srTSRWRadStructAccessData& OldRadAccessData, sr
 	int nx_mi_2Old = nx_mi_1Old - 1;
 	int nz_mi_2Old = nz_mi_1Old - 1;
 
-	srTInterpolAux01 InterpolAux01;
-
-	srTInterpolAux02 InterpolAux02[4], InterpolAux02I[2];
-	srTInterpolAuxF AuxF[4], AuxFI[2];
-	int ixStOld, izStOld, ixStOldPrev = -1000, izStOldPrev = -1000;
+	//OC31102018: moved by SY at parallelizing SRW via OpenMP
+	//srTInterpolAux01 InterpolAux01;
+	//srTInterpolAux02 InterpolAux02[4], InterpolAux02I[2];
+	//srTInterpolAuxF AuxF[4], AuxFI[2];
+	//int ixStOld, izStOld, ixStOldPrev = -1000, izStOldPrev = -1000;
 
 	float *pEX0_New = 0, *pEZ0_New = 0;
 	if(TreatPolCompX) pEX0_New = NewRadAccessData.pBaseRadX;
@@ -2507,19 +2869,38 @@ int srTGenOptElem::RadResizeCore(srTSRWRadStructAccessData& OldRadAccessData, sr
 	long long PerX_Old = PerX_New;
 	long long PerZ_Old = PerX_Old*OldRadAccessData.nx;
 
-	float BufF[4], BufFI[2];
-	char UseLowOrderInterp_PolCompX, UseLowOrderInterp_PolCompZ;
+	//OC31102018: moved by SY at OpenMP parallelization
+	//float BufF[4], BufFI[2];
+	//char UseLowOrderInterp_PolCompX, UseLowOrderInterp_PolCompZ;
+
+	//Added by SY (for profiling?) at parallelizing SRW via OpenMP:
+	//srwlPrintTime(":RadResizeCore: init variables",&start);
 
 	int result = 0;
+
+#ifdef _WITH_OMP //OC31102018: added by SY at parallelizing SRW via OpenMP
+	#pragma omp parallel for
+#endif
+
 	for(int ie=0; ie<NewRadAccessData.ne; ie++)
 	{
-		ixStOldPrev = -1000; izStOldPrev = -1000;
+		//OC31102018: modified by SY at OpenMP parallelization
+		//ixStOldPrev = -1000; izStOldPrev = -1000;
+
+		//OC31102018: moved by SY at OpenMP parallelization
+		srTInterpolAux01 InterpolAux01;
+		srTInterpolAux02 InterpolAux02[4], InterpolAux02I[2];
+		srTInterpolAuxF AuxF[4], AuxFI[2];
+		int ixStOld, izStOld, ixStOldPrev = -1000, izStOldPrev = -1000;
+		float BufF[4], BufFI[2];
+		char UseLowOrderInterp_PolCompX, UseLowOrderInterp_PolCompZ;
 
 		//long Two_ie = ie << 1;
 		long long Two_ie = ie << 1;
 		for(int iz=izStart; iz<=izEnd; iz++)
 		{
-			if(result = srYield.Check()) return result;
+			//SY: do we need this (always returns 0, updates some clock)
+			//if(result = srYield.Check()) return result;
 
 			double zAbs = NewRadAccessData.zStart + iz*NewRadAccessData.zStep;
 
@@ -2579,7 +2960,7 @@ int srTGenOptElem::RadResizeCore(srTSRWRadStructAccessData& OldRadAccessData, sr
 
 				if((izStOld != izStOldPrev) || (ixStOld != ixStOldPrev))
 				{
-					UseLowOrderInterp_PolCompX = 0, UseLowOrderInterp_PolCompZ = 0;
+					UseLowOrderInterp_PolCompX = 0; UseLowOrderInterp_PolCompZ = 0;
 
 					//long TotOffsetOld = izStOld*PerZ_Old + ixStOld*PerX_Old + Two_ie;
 					long long TotOffsetOld = izStOld*PerZ_Old + ixStOld*PerX_Old + Two_ie;
@@ -2673,7 +3054,16 @@ int srTGenOptElem::RadResizeCore(srTSRWRadStructAccessData& OldRadAccessData, sr
 			}
 		}
 	}
+
+	//OC31102018: added by SY (for profiling?) at parallelizing SRW via OpenMP
+	//char str[256];
+	//sprintf(str,"%s %d",":RadResizeCore: cycles:",NewRadAccessData.ne);
+	//srwlPrintTime(str,&start);
+
 	if(WaveFrontTermWasTreated) TreatStronglyOscillatingTerm(NewRadAccessData, 'a', PolComp);
+
+	//OC31102018: added by SY (for profiling?) at parallelizing SRW via OpenMP
+	//srwlPrintTime(":RadResizeCore: TreatStronglyOscillatingTerm 2",&start);
 
 	OldRadAccessData.WfrQuadTermCanBeTreatedAtResizeX = OrigWfrQuadTermCanBeTreatedAtResizeX;
 	OldRadAccessData.WfrQuadTermCanBeTreatedAtResizeZ = OrigWfrQuadTermCanBeTreatedAtResizeZ;
@@ -4193,10 +4583,11 @@ void srTGenOptElem::TreatStronglyOscillatingTerm(srTSRWRadStructAccessData& RadA
 
 	if(AddOrRem == 'r') { ConstRx = -ConstRx; ConstRz = -ConstRz;}
 
-	double ConstRxE, ConstRzE;
-	double ePh = RadAccessData.eStart, x, z, zE2;
-	double Phase;
-	float CosPh, SinPh;
+	//OC31102018: moved by SY at parallelizing SRW via OpenMP
+	//double ConstRxE, ConstRzE;
+	//double ePh = RadAccessData.eStart, x, z, zE2;
+	//double Phase;
+	//float CosPh, SinPh;
 
 	float *pEX0 = 0, *pEZ0 = 0;
 	if(TreatPolCompX) pEX0 = RadAccessData.pBaseRadX;
@@ -4214,9 +4605,25 @@ void srTGenOptElem::TreatStronglyOscillatingTerm(srTSRWRadStructAccessData& RadA
 		ieStart = ieOnly; ieBefEnd = ieOnly + 1;
 	}
 
+#ifdef _WITH_OMP //OC31102018: added by SY at parallelizing SRW via OpenMP
+	#pragma omp parallel for
+#endif
+
 	//for(int ie=0; ie<RadAccessData.ne; ie++)
 	for(int ie=ieStart; ie<ieBefEnd; ie++) //OC161008
 	{
+		//OC31102018: moved by SY at parallelizing SRW via OpenMP
+		double Phase;
+		float CosPh, SinPh;
+		double ConstRxE, ConstRzE;
+		double x, z, zE2;
+
+		//SY: to have one-to-one with previous version (so that tests do no fail)
+		//double ePh = RadAccessData.eStart;
+		//for (int i = ieStart; i<ie; i++) ePh += RadAccessData.eStep;
+		//SY: can be replaced with this
+		double ePh = RadAccessData.eStart + RadAccessData.eStep*(ie - ieStart);
+
 		if(RadAccessData.PresT == 1)
 		{
 			ePh = RadAccessData.avgPhotEn; //?? OC041108
@@ -4290,7 +4697,8 @@ void srTGenOptElem::TreatStronglyOscillatingTerm(srTSRWRadStructAccessData& RadA
 			PhaseAddZ = 0.;
 			if(RadAccessData.WfrQuadTermCanBeTreatedAtResizeZ) PhaseAddZ = ConstRzE*zE2;
 		}
-		ePh += RadAccessData.eStep;
+		//OC31102018: removed by SY at parallelizing SRW via OPenMP
+		//ePh += RadAccessData.eStep;
 	}
 }
 
@@ -4577,7 +4985,8 @@ int srTGenOptElem::GenExtractPhase(srTWaveAccessData& InWaveAccessData, double* 
 	}
 	else
 	{
-		long nx = InWaveAccessData.DimSizes[0], nz = InWaveAccessData.DimSizes[1];
+		//long nx = InWaveAccessData.DimSizes[0], nz = InWaveAccessData.DimSizes[1];
+		long nx = (long)(InWaveAccessData.DimSizes[0]), nz = (long)(InWaveAccessData.DimSizes[1]); //OC28042019
 
 		double* AuxMagArrayX = new double[nx];
 		if(AuxMagArrayX == 0) return MEMORY_ALLOCATION_FAILURE;
@@ -4720,8 +5129,10 @@ int srTGenOptElem::ExtractPhase1D(srTWaveAccessData& InWaveAccessData, double* p
 int srTGenOptElem::GenAuxPropagate4x4PropMatr(srTSRWRadStructAccessData* pRadAccessData, double* OptElem4x4Matr, double* OptElem4Vect)
 {
 	int i, j, k;
-	DOUBLE *OldMatrStrPtrs[4];
-	DOUBLE *OldVect = pRadAccessData->p4x4PropMatr + 16;
+	//DOUBLE *OldMatrStrPtrs[4];
+	//DOUBLE *OldVect = pRadAccessData->p4x4PropMatr + 16;
+	double *OldMatrStrPtrs[4]; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+	double *OldVect = pRadAccessData->p4x4PropMatr + 16;
 	double ResMatr[16], ResVect[4];
 	double *ResMatrStrPtrs[4], *OptElemMatrStrPtrs[4];
 	for(i=0; i<4; i++)
@@ -4752,7 +5163,8 @@ int srTGenOptElem::GenAuxPropagate4x4PropMatr(srTSRWRadStructAccessData* pRadAcc
 		}
 	}
 
-	DOUBLE* t4x4PropMatr = pRadAccessData->p4x4PropMatr;
+	//DOUBLE* t4x4PropMatr = pRadAccessData->p4x4PropMatr;
+	double* t4x4PropMatr = pRadAccessData->p4x4PropMatr; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	double* tResMatr = ResMatr;
 	for(i=0; i<16; i++) *(t4x4PropMatr++) = *(tResMatr++);
 

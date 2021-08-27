@@ -42,6 +42,7 @@ struct srTSRWRadInData {
 	int hStateRadX, hStateRadZ;
 	double eStep, eStart, xStep, xStart, zStep, zStart;
 	long ne, nx, nz;
+	//long long ne, nx, nz; //OC26042019
 
 	//double xStartTr, zStartTr;
 	//bool UseStartTrToShiftAtChangingRepresToCoord;
@@ -71,7 +72,8 @@ struct srTSRWRadInData {
 	//bool WfrQuadTermCanBeTreatedAtResizeZ;
 
 	//char ElectronBeamEmulated; // 0 by def.
-	DOUBLE *pElecBeam;
+	//DOUBLE *pElecBeam;
+	double *pElecBeam; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	waveHndl wElecBeam; // Can be this or Trajectory
 	int hStateElecBeam;
 
@@ -79,18 +81,21 @@ struct srTSRWRadInData {
 	int hStateTrj;
 
 	//bool PropMatrWasEmulated;
-	DOUBLE *p4x4PropMatr;
+	//DOUBLE *p4x4PropMatr;
+	double *p4x4PropMatr; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	waveHndl w4x4PropMatr;
 	int hState4x4PropMatr;
 
 	//bool MomWereEmulated;
 	//float *pMomX, *pMomZ;
-	DOUBLE *pMomX, *pMomZ; //OC130311
+	//DOUBLE *pMomX, *pMomZ; //OC130311
+	double *pMomX, *pMomZ; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	waveHndl wMomX, wMomZ;
 	int hStateMomX, hStateMomZ;
 
 	//bool WfrAuxDataWasEmulated;
-	DOUBLE *pWfrAuxData;
+	//DOUBLE *pWfrAuxData;
+	double *pWfrAuxData; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	waveHndl wWfrAuxData;
 	int hStateWfrAuxData;
 
@@ -154,6 +159,7 @@ struct srTSRWStokesInData {
 
 	double eStep, eStart, xStep, xStart, zStep, zStart, yStep, yStart;
 	long ne, nx, nz, ny;
+	//long long ne, nx, nz, ny; //OC26042019
 
 	srTSRWStokesInData()
 	{
@@ -173,6 +179,7 @@ struct srTSRWPowDensInData {
 
 	double xStep, xStart, zStep, zStart;
 	long nx, nz;
+	//long long nx, nz; 
 };
 
 //-------------------------------------------------------------------------
@@ -181,7 +188,8 @@ struct srTIgorWaveAccessData {
 	char* pWaveData;
 	char WaveType[2]; // 'f'|'d'|'cf'|'cd'
 	long AmOfDims;
-	long DimSizes[10];
+	//long DimSizes[10];
+	long long DimSizes[10]; //OC26042019 (port to XOP7)
 	double DimStartValues[10];
 	double DimSteps[10];
 	char DimUnits[10][255];

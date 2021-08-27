@@ -18,6 +18,9 @@
 #include "srerror.h"
 #include "srwlib.h"
 
+//OCTEST 05032019
+#include "gminterp.h"
+
 //*************************************************************************
 
 srTGenTransmission::srTGenTransmission(srTStringVect* pElemInfo, srTDataMD* pExtraData) 
@@ -191,8 +194,10 @@ int srTGenTransmission::EstimateMinimalContinuousIntervals()
 
 	if(GenTransNumData.AmOfDims == 2)
 	{
-		Nx = (GenTransNumData.DimSizes)[0]; 
-		Nz = (GenTransNumData.DimSizes)[1];
+		//Nx = (GenTransNumData.DimSizes)[0]; 
+		//Nz = (GenTransNumData.DimSizes)[1];
+		Nx = (long)((GenTransNumData.DimSizes)[0]); //OC28042019
+		Nz = (long)((GenTransNumData.DimSizes)[1]);
 		//double xStart = (GenTransNumData.DimStartValues)[0], zStart = (GenTransNumData.DimStartValues)[1];
 		xStep = (GenTransNumData.DimSteps)[0]; 
 		zStep = (GenTransNumData.DimSteps)[1];
@@ -200,9 +205,12 @@ int srTGenTransmission::EstimateMinimalContinuousIntervals()
 	}
 	else if(GenTransNumData.AmOfDims == 3)
 	{
-		Ne = (GenTransNumData.DimSizes)[0]; 
-		Nx = (GenTransNumData.DimSizes)[1]; 
-		Nz = (GenTransNumData.DimSizes)[2];
+		//Ne = (GenTransNumData.DimSizes)[0]; 
+		//Nx = (GenTransNumData.DimSizes)[1]; 
+		//Nz = (GenTransNumData.DimSizes)[2];
+		Ne = (long)((GenTransNumData.DimSizes)[0]); //OC28042019
+		Nx = (long)((GenTransNumData.DimSizes)[1]); 
+		Nz = (long)((GenTransNumData.DimSizes)[2]);
 
 		xStep = (GenTransNumData.DimSteps)[1]; 
 		zStep = (GenTransNumData.DimSteps)[2];
@@ -217,7 +225,8 @@ int srTGenTransmission::EstimateMinimalContinuousIntervals()
 	long long xPer = Ne << 1;
 	long long zPer = xPer*Nx;
 
-	DOUBLE *pT0 = (DOUBLE*)(GenTransNumData.pData);
+	//DOUBLE *pT0 = (DOUBLE*)(GenTransNumData.pData);
+	double *pT0 = (double*)(GenTransNumData.pData); //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	if(pT0 == 0) return IMPROPER_OPTICAL_COMPONENT_STRUCTURE;
 	//DOUBLE *pP0 = (DOUBLE*)(GenTransNumData.pData) + 1;
 
@@ -239,9 +248,11 @@ int srTGenTransmission::EstimateMinimalContinuousIntervals()
 			int ixStartDiscontT = 0, ixStartDiscontP = 0;
 			for(int ix=1; ix<(Nx - 1); ix++)
 			{
-				//DOUBLE *pT = pT0 + iz*zPer + (ix << 1);
-				DOUBLE *pT = pT0 + iz*zPer + ix*xPer + (ie << 1);
-				DOUBLE *pP = pT + 1;
+				////DOUBLE *pT = pT0 + iz*zPer + (ix << 1);
+				//DOUBLE *pT = pT0 + iz*zPer + ix*xPer + (ie << 1);
+				//DOUBLE *pP = pT + 1;
+				double *pT = pT0 + iz*zPer + ix*xPer + (ie << 1); //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+				double *pP = pT + 1;
 
 				double zPrevT = *(pT - zPer), xPrevT = *(pT - 2);
 				double zPrevP = *(pP - zPer), xPrevP = *(pP - 2);
@@ -301,17 +312,23 @@ void srTGenTransmission::EnsureTransmissionForField()
 	long ne=1, nx=1, nz=1;
 	if(GenTransNumData.AmOfDims == 2)
 	{
-		nx = (GenTransNumData.DimSizes)[0];
-		nz = (GenTransNumData.DimSizes)[1];
+		//nx = (GenTransNumData.DimSizes)[0];
+		//nz = (GenTransNumData.DimSizes)[1];
+		nx = (long)((GenTransNumData.DimSizes)[0]); //OC28042019
+		nz = (long)((GenTransNumData.DimSizes)[1]);
 	}
 	else if(GenTransNumData.AmOfDims == 3)
 	{
-		ne = (GenTransNumData.DimSizes)[0];
-		nx = (GenTransNumData.DimSizes)[1];
-		nz = (GenTransNumData.DimSizes)[2];
+		//ne = (GenTransNumData.DimSizes)[0];
+		//nx = (GenTransNumData.DimSizes)[1];
+		//nz = (GenTransNumData.DimSizes)[2];
+		ne = (long)((GenTransNumData.DimSizes)[0]); //OC28042019
+		nx = (long)((GenTransNumData.DimSizes)[1]);
+		nz = (long)((GenTransNumData.DimSizes)[2]);
 	}
 
-	DOUBLE *t = (DOUBLE*)(GenTransNumData.pData);
+	//DOUBLE *t = (DOUBLE*)(GenTransNumData.pData);
+	double *t = (double*)(GenTransNumData.pData); //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	//for(long iz=0; iz<(GenTransNumData.DimSizes)[1]; iz++)
 	for(long iz=0; iz<nz; iz++)
 	{
@@ -337,7 +354,8 @@ double srTGenTransmission::DetermineAppropriatePhotEnergyForFocDistTest(double R
 		const double a = 1.239842e-06;
 		const int Nm = 256;
 
-		long NpDefX = (GenTransNumData.DimSizes)[0];
+		//long NpDefX = (GenTransNumData.DimSizes)[0];
+		long NpDefX = (long)((GenTransNumData.DimSizes)[0]); //OC28042019
 		double StartX = (GenTransNumData.DimStartValues)[0] + TransvCenPoint.x;
 		double StepX = (GenTransNumData.DimSteps)[0];
 		double EndX = StartX + (NpDefX - 1)*StepX;
@@ -345,7 +363,8 @@ double srTGenTransmission::DetermineAppropriatePhotEnergyForFocDistTest(double R
 		double AbsMaxX = (AbsStartX > AbsEndX)? AbsStartX : AbsEndX;
 		double eMidX = a*Rx*Nm/(8*AbsMaxX*AbsMaxX);
 
-		long NpDefZ = (GenTransNumData.DimSizes)[1];
+		//long NpDefZ = (GenTransNumData.DimSizes)[1];
+		long NpDefZ = (long)((GenTransNumData.DimSizes)[1]); //OC28042019
 		double StartZ = (GenTransNumData.DimStartValues)[1] + TransvCenPoint.y;
 		double StepZ = (GenTransNumData.DimSteps)[1];
 		double EndZ = StartZ + (NpDefZ - 1)*StepZ;
@@ -361,7 +380,8 @@ double srTGenTransmission::DetermineAppropriatePhotEnergyForFocDistTest(double R
 	}
 	else //if(GenTransNumData.AmOfDims == 3)
 	{
-		long ne = (GenTransNumData.DimSizes)[0];
+		//long ne = (GenTransNumData.DimSizes)[0];
+		long ne = (long)((GenTransNumData.DimSizes)[0]);
 		long iec = ne >> 1;
 		return (GenTransNumData.DimStartValues)[0] + iec*((GenTransNumData.DimSteps)[0]); //"central" photon energy
 	}
@@ -535,15 +555,18 @@ void srTGenTransmission::EstimateEffPointsRange(char x_or_z, long icOtherCoord, 
 	
 	if(GenTransNumData.AmOfDims == 2) 
 	{
-		Nx = (GenTransNumData.DimSizes)[0];
+		//Nx = (GenTransNumData.DimSizes)[0];
+		Nx = (long)((GenTransNumData.DimSizes)[0]); //OC28042019
 	}
 	else if(GenTransNumData.AmOfDims == 3)
 	{
-		Ne = (GenTransNumData.DimSizes)[0];
+		//Ne = (GenTransNumData.DimSizes)[0];
+		Ne = (long)((GenTransNumData.DimSizes)[0]); //OC28042019
 		iec = Ne >> 1;
 
 		iDimX = 1; iDimZ = 2;
-		Nx = (GenTransNumData.DimSizes)[iDimX];
+		//Nx = (GenTransNumData.DimSizes)[iDimX];
+		Nx = (long)((GenTransNumData.DimSizes)[iDimX]); //OC28042019
 	}
 
 	double ArgStep=0, ArgStart=0;
@@ -574,15 +597,18 @@ void srTGenTransmission::EstimateEffPointsRange(char x_or_z, long icOtherCoord, 
 		Period = Nx*(Ne << 1); //OC241112
 		InitialOffset = icOtherCoord*(Ne << 1) + (iec << 1);
 
-		Np = (GenTransNumData.DimSizes)[iDimZ];
+		//Np = (GenTransNumData.DimSizes)[iDimZ];
+		Np = (long)((GenTransNumData.DimSizes)[iDimZ]); //OC28042019
 		
 		ArgStep = (GenTransNumData.DimSteps)[iDimZ];
 		ArgStart = (GenTransNumData.DimStartValues)[iDimZ]; // + TransvCenPoint.y;
 	}
 	long Np_mi_1 = Np - 1;
 
-	DOUBLE *tT0 = (DOUBLE*)(GenTransNumData.pData) + InitialOffset;
-	DOUBLE *tT = tT0;
+	//DOUBLE *tT0 = (DOUBLE*)(GenTransNumData.pData) + InitialOffset;
+	//DOUBLE *tT = tT0;
+	double *tT0 = (double*)(GenTransNumData.pData) + InitialOffset; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+	double *tT = tT0;
 
 	double Tmax = 0., Tmin = 1.E+23;
 	long i;
@@ -595,7 +621,8 @@ void srTGenTransmission::EstimateEffPointsRange(char x_or_z, long icOtherCoord, 
 
 	double MagnThresh = Tmin + AbsTolMagn*(Tmax - Tmin);
 	tT = tT0;
-	DOUBLE *tT_Inv = tT0 + Period*(Np - 1);
+	//DOUBLE *tT_Inv = tT0 + Period*(Np - 1);
+	double *tT_Inv = tT0 + Period*(Np - 1); //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	iFirst = -1; iLast = Np;
 	for(i=0; i<Np; i++)
 	{
@@ -723,13 +750,15 @@ int srTGenTransmission::ExtractNumStructSect1DAndCheckSampling(char x_or_z, doub
 		//double OtherRange = ((GenTransNumData.DimSizes)[1] - 1)*OtherStep;
 		//Sect1D.OtherCoordVal = (GenTransNumData.DimStartValues)[1] + RelOtherCoord*OtherRange;
 
-		Sect1D.np = (GenTransNumData.DimSizes)[iDimX]; //OC241112
+		//Sect1D.np = (GenTransNumData.DimSizes)[iDimX]; //OC241112
+		Sect1D.np = (long)((GenTransNumData.DimSizes)[iDimX]); //OC28042019
 		Sect1D.ArgStep = (GenTransNumData.DimSteps)[iDimX];
 		Sect1D.ArgStart = (GenTransNumData.DimStartValues)[iDimX];
 
 		OtherStep = (GenTransNumData.DimSteps)[iDimZ];
 		OtherStart = (GenTransNumData.DimStartValues)[iDimZ];
-		OtherNp = (GenTransNumData.DimSizes)[iDimZ];
+		//OtherNp = (GenTransNumData.DimSizes)[iDimZ];
+		OtherNp = (long)((GenTransNumData.DimSizes)[iDimZ]); //OC28042019
 		double OtherRange = ((GenTransNumData.DimSizes)[iDimZ] - 1)*OtherStep;
 		Sect1D.OtherCoordVal = (GenTransNumData.DimStartValues)[iDimZ] + RelOtherCoord*OtherRange;
 	}
@@ -745,13 +774,15 @@ int srTGenTransmission::ExtractNumStructSect1DAndCheckSampling(char x_or_z, doub
 		//double OtherRange = ((GenTransNumData.DimSizes)[0] - 1)*OtherStep;
 		//Sect1D.OtherCoordVal = (GenTransNumData.DimStartValues)[0] + RelOtherCoord*OtherRange;
 
-		Sect1D.np = (GenTransNumData.DimSizes)[iDimZ]; //OC241112
+		//Sect1D.np = (GenTransNumData.DimSizes)[iDimZ]; //OC241112
+		Sect1D.np = (long)((GenTransNumData.DimSizes)[iDimZ]); //OC28042019
 		Sect1D.ArgStep = (GenTransNumData.DimSteps)[iDimZ];
 		Sect1D.ArgStart = (GenTransNumData.DimStartValues)[iDimZ];
 
 		OtherStep = (GenTransNumData.DimSteps)[iDimX];
 		OtherStart = (GenTransNumData.DimStartValues)[iDimX];
-		OtherNp = (GenTransNumData.DimSizes)[iDimX];
+		//OtherNp = (GenTransNumData.DimSizes)[iDimX];
+		OtherNp = (long)((GenTransNumData.DimSizes)[iDimX]); //OC28042019
 		double OtherRange = ((GenTransNumData.DimSizes)[iDimX] - 1)*OtherStep;
 		Sect1D.OtherCoordVal = (GenTransNumData.DimStartValues)[iDimX] + RelOtherCoord*OtherRange;
 	}
@@ -826,8 +857,10 @@ void srTGenTransmission::CopyNumStructValuesToSect1DAndCheckSampling(srTRadSect1
 	//long Np_mi_1 = Np - 1;
 	long long Np_mi_1 = Np - 1;
 
-	DOUBLE *tPh0 = (DOUBLE*)(GenTransNumData.pData) + InitialOffset + 1;
-	DOUBLE *tPh = tPh0;
+	//DOUBLE *tPh0 = (DOUBLE*)(GenTransNumData.pData) + InitialOffset + 1;
+	//DOUBLE *tPh = tPh0;
+	double *tPh0 = (double*)(GenTransNumData.pData) + InitialOffset + 1; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+	double *tPh = tPh0;
 
 	double *tPhOut = PhaseCont;
 	double PhMax = -1.E+23, PhMin = 1.E+23;
@@ -932,11 +965,13 @@ int srTGenTransmission::SetUpPointSourceSect1D(char x_or_z, double R, double Rel
 		//OtherStart = (GenTransNumData.DimStartValues)[1] + TransvCenPoint.y;
 		//OtherStep = (GenTransNumData.DimSteps)[1];
 
-		NpDef = (GenTransNumData.DimSizes)[iDimX]; //OC241112
+		//NpDef = (GenTransNumData.DimSizes)[iDimX]; //OC241112
+		NpDef = (long)((GenTransNumData.DimSizes)[iDimX]); //OC28042019
 		Start = (GenTransNumData.DimStartValues)[iDimX]; // + TransvCenPoint.x;
 		Step = (GenTransNumData.DimSteps)[iDimX];
 
-		OtherNpDef = (GenTransNumData.DimSizes)[iDimZ];
+		//OtherNpDef = (GenTransNumData.DimSizes)[iDimZ];
+		OtherNpDef = (long)((GenTransNumData.DimSizes)[iDimZ]); //OC28042019
 		OtherStart = (GenTransNumData.DimStartValues)[iDimZ]; // + TransvCenPoint.y;
 		OtherStep = (GenTransNumData.DimSteps)[iDimZ];
 	}
@@ -950,11 +985,13 @@ int srTGenTransmission::SetUpPointSourceSect1D(char x_or_z, double R, double Rel
 		//OtherStart = (GenTransNumData.DimStartValues)[0] + TransvCenPoint.x;
 		//OtherStep = (GenTransNumData.DimSteps)[0];
 
-		NpDef = (GenTransNumData.DimSizes)[iDimZ]; //OC241112
+		//NpDef = (GenTransNumData.DimSizes)[iDimZ]; //OC241112
+		NpDef = (long)((GenTransNumData.DimSizes)[iDimZ]); //OC28042019
 		Start = (GenTransNumData.DimStartValues)[iDimZ]; // + TransvCenPoint.y;
 		Step = (GenTransNumData.DimSteps)[iDimZ];
 
-		OtherNpDef = (GenTransNumData.DimSizes)[iDimX];
+		//OtherNpDef = (GenTransNumData.DimSizes)[iDimX];
+		OtherNpDef = (long)((GenTransNumData.DimSizes)[iDimX]); //OC28042019
 		OtherStart = (GenTransNumData.DimStartValues)[iDimX]; // + TransvCenPoint.x;
 		OtherStep = (GenTransNumData.DimSteps)[iDimX];
 	}
@@ -1047,9 +1084,11 @@ int srTGenTransmission::DetermineFocalDistByPropag1D(srTRadSect1D& Sect1D, doubl
 	double ArgFirst, ArgLast;
 	EstimateEffPointsRange(Sect1D.VsXorZ, Sect1D.icOtherCoord, iFirst, iLast, ArgFirst, ArgLast);
 	iFirst = (long)((ArgFirst - Sect1D.ArgStart)/Sect1D.ArgStep);
-	if(iFirst >= Sect1D.np) iFirst = Sect1D.np - 1;
+	//if(iFirst >= Sect1D.np) iFirst = Sect1D.np - 1;
+	if(iFirst >= Sect1D.np) iFirst = (long)Sect1D.np - 1; //OC28042019
 	iLast = (long)((ArgLast - Sect1D.ArgStart)/Sect1D.ArgStep);
-	if(iLast >= Sect1D.np) iLast = Sect1D.np - 1;
+	//if(iLast >= Sect1D.np) iLast = Sect1D.np - 1;
+	if(iLast >= Sect1D.np) iLast = (long)Sect1D.np - 1; //OC28042019
 	long Np = iLast - iFirst + 1;
 
 	const long maxNp = 1000000; 
@@ -1134,7 +1173,8 @@ int srTGenTransmission::DetermineFocalDistByPropag1D(srTRadSect1D& Sect1D, doubl
 
 //*************************************************************************
 
-void srTGenTransmission::RadPointModifier(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
+void srTGenTransmission::RadPointModifier(srTEXZ& EXZ, srTEFieldPtrs& EPtrs, void* pBufVars) //OC29082019
+//void srTGenTransmission::RadPointModifier(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
 {// e in eV; Length in m !!!
  // Operates on Coord. side !!!
 	//double xRel = EXZ.x - TransvCenPoint.x, zRel = EXZ.z - TransvCenPoint.y;
@@ -1144,13 +1184,15 @@ void srTGenTransmission::RadPointModifier(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
 	long iDimX = 0, iDimZ = 1;
 	if(GenTransNumData.AmOfDims == 3)
 	{
-		Ne = (GenTransNumData.DimSizes)[0];
+		//Ne = (GenTransNumData.DimSizes)[0];
+		Ne = (long)((GenTransNumData.DimSizes)[0]); //OC28042019
 		Nemi2 = Ne - 2;
 		iDimX = 1; iDimZ = 2;
 	}
 
 	//long Nx = (GenTransNumData.DimSizes)[0], Nz = (GenTransNumData.DimSizes)[1];
-	long Nx = (GenTransNumData.DimSizes)[iDimX], Nz = (GenTransNumData.DimSizes)[iDimZ]; //OC241112
+	//long Nx = (GenTransNumData.DimSizes)[iDimX], Nz = (GenTransNumData.DimSizes)[iDimZ]; //OC241112
+	long Nx = (long)((GenTransNumData.DimSizes)[iDimX]), Nz = (long)((GenTransNumData.DimSizes)[iDimZ]); //OC28042019
 	long Nxmi2 = Nx - 2, Nzmi2 = Nz - 2;
 	
 	//double xStart = (GenTransNumData.DimStartValues)[0], zStart = (GenTransNumData.DimStartValues)[1];
@@ -1207,11 +1249,14 @@ void srTGenTransmission::RadPointModifier(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
 		//long zPer = Nx << 1;
 		long long zPer = Nx << 1;
 
-		DOUBLE *p00 = (DOUBLE*)(GenTransNumData.pData) + (iz*zPer + (ix << 1));
-		DOUBLE *p10 = p00 + 2, *p01 = p00 + zPer;
-		DOUBLE *p11 = p01 + 2;
-
-		DOUBLE *p00p1 = p00+1, *p10p1 = p10+1, *p01p1 = p01+1, *p11p1 = p11+1;
+		//DOUBLE *p00 = (DOUBLE*)(GenTransNumData.pData) + (iz*zPer + (ix << 1));
+		//DOUBLE *p10 = p00 + 2, *p01 = p00 + zPer;
+		//DOUBLE *p11 = p01 + 2;
+		//DOUBLE *p00p1 = p00+1, *p10p1 = p10+1, *p01p1 = p01+1, *p11p1 = p11+1;
+		double *p00 = (double*)(GenTransNumData.pData) + (iz*zPer + (ix << 1)); //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+		double *p10 = p00 + 2, *p01 = p00 + zPer;
+		double *p11 = p01 + 2;
+		double *p00p1 = p00+1, *p10p1 = p10+1, *p01p1 = p01+1, *p11p1 = p11+1;
 
 		//double Axz = 0., Ax = 0., Az = 0., Bxz = 0., Bx = 0., Bz = 0.;
 		//if(NotExactRightEdgeX && NotExactRightEdgeZ) { Axz = *p00 - *p01 - *p10 + *p11; Bxz = *p00p1 - *p01p1 - *p10p1 + *p11p1;}
@@ -1224,6 +1269,15 @@ void srTGenTransmission::RadPointModifier(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
 
 		T = Axz*xrzr + Ax*xr + Az*zr + *p00;
 		Ph = Bxz*xrzr + Bx*xr + Bz*zr + *p00p1;
+
+		//OCTEST 04032019
+		//T = *p00 + Ax*xr + Az*zr;
+		//Ph = *p00p1 + Bx*xr + Bz*zr;
+
+		//OCTEST 05032019
+		//T = CGenMathInterp::InterpOnRegMesh2d(EXZ.x, EXZ.z, xStart, xStep, Nx, zStart, zStep, Nz, (double*)(GenTransNumData.pData), 3, 2);
+		//Ph = CGenMathInterp::InterpOnRegMesh2d(EXZ.x, EXZ.z, xStart, xStep, Nx, zStart, zStep, Nz, (double*)(GenTransNumData.pData) + 1, 3, 2);
+		//END OCTEST
 	}
 	else if(GenTransNumData.AmOfDims == 3)
 	{//bi-linear 3D interpolation
@@ -1242,10 +1296,14 @@ void srTGenTransmission::RadPointModifier(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
 		//long zPer = Nx*xPer;
 		long long xPer = Ne << 1;
 		long long zPer = Nx*xPer;
-		DOUBLE *p000 = (DOUBLE*)(GenTransNumData.pData) + (iz*zPer + ix*xPer + (ie << 1));
-		DOUBLE *p100 = p000 + 2, *p010 = p000 + xPer, *p001 = p000 + zPer;
-		DOUBLE *p110 = p100 + xPer, *p101 = p100 + zPer, *p011 = p010 + zPer;
-		DOUBLE *p111 = p110 + zPer;
+		//DOUBLE *p000 = (DOUBLE*)(GenTransNumData.pData) + (iz*zPer + ix*xPer + (ie << 1));
+		//DOUBLE *p100 = p000 + 2, *p010 = p000 + xPer, *p001 = p000 + zPer;
+		//DOUBLE *p110 = p100 + xPer, *p101 = p100 + zPer, *p011 = p010 + zPer;
+		//DOUBLE *p111 = p110 + zPer;
+		double *p000 = (double*)(GenTransNumData.pData) + (iz*zPer + ix*xPer + (ie << 1)); //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+		double *p100 = p000 + 2, *p010 = p000 + xPer, *p001 = p000 + zPer;
+		double *p110 = p100 + xPer, *p101 = p100 + zPer, *p011 = p010 + zPer;
+		double *p111 = p110 + zPer;
 
 		double one_mi_er = 1.- er, one_mi_xr = 1.- xr, one_mi_zr = 1.- zr;
 		double one_mi_er_one_mi_xr = one_mi_er*one_mi_xr, er_one_mi_xr = er*one_mi_xr;
@@ -1284,7 +1342,8 @@ void srTGenTransmission::RadPointModifier(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
 
 //*************************************************************************
 
-void srTGenTransmission::RadPointModifier1D(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
+void srTGenTransmission::RadPointModifier1D(srTEXZ& EXZ, srTEFieldPtrs& EPtrs, void* pBuf) //OC06092019
+//void srTGenTransmission::RadPointModifier1D(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
 {// e in eV; Length in m !!!
  // Operates on Coord. side !!!
 	//double xRel = EXZ.x - TransvCenPoint.x, zRel = EXZ.z - TransvCenPoint.y;
@@ -1294,13 +1353,15 @@ void srTGenTransmission::RadPointModifier1D(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
 	long iDimX = 0, iDimZ = 1;
 	if(GenTransNumData.AmOfDims == 3)
 	{
-		Ne = (GenTransNumData.DimSizes)[0];
+		//Ne = (GenTransNumData.DimSizes)[0];
+		Ne = (long)((GenTransNumData.DimSizes)[0]); //OC28042019
 		Nemi2 = Ne - 2;
 		iDimX = 1; iDimZ = 2;
 	}
 
 	//long Nx = (GenTransNumData.DimSizes)[0], Nz = (GenTransNumData.DimSizes)[1];
-	long Nx = (GenTransNumData.DimSizes)[iDimX], Nz = (GenTransNumData.DimSizes)[iDimZ]; //OC241112
+	//long Nx = (GenTransNumData.DimSizes)[iDimX], Nz = (GenTransNumData.DimSizes)[iDimZ]; //OC241112
+	long Nx = (long)((GenTransNumData.DimSizes)[iDimX]), Nz = (long)((GenTransNumData.DimSizes)[iDimZ]); //OC28042019
 	long Nxmi2 = Nx - 2, Nzmi2 = Nz - 2;
 
 	//double xStart = (GenTransNumData.DimStartValues)[0], zStart = (GenTransNumData.DimStartValues)[1];
@@ -1337,7 +1398,8 @@ void srTGenTransmission::RadPointModifier1D(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
 	{
 		//long zPer = Nx << 1;
 		long long zPer = Nx << 1;
-		DOUBLE *p0 = (DOUBLE*)(GenTransNumData.pData) + (iz*zPer + (ix << 1));
+		//DOUBLE *p0 = (DOUBLE*)(GenTransNumData.pData) + (iz*zPer + (ix << 1));
+		double *p0 = (double*)(GenTransNumData.pData) + (iz*zPer + (ix << 1)); //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 
 		if(EXZ.VsXorZ == 'x')
 		{
@@ -1365,9 +1427,12 @@ void srTGenTransmission::RadPointModifier1D(srTEXZ& EXZ, srTEFieldPtrs& EPtrs)
 		//long zPer = Nx*xPer;
 		long long xPer = Ne << 1;
 		long long zPer = Nx*xPer;
-		DOUBLE *p00 = (DOUBLE*)(GenTransNumData.pData) + (iz*zPer + ix*xPer + (ie << 1));
-		DOUBLE *p10 = p00 + 2;
-		DOUBLE *p01=0, *p11=0;
+		//DOUBLE *p00 = (DOUBLE*)(GenTransNumData.pData) + (iz*zPer + ix*xPer + (ie << 1));
+		//DOUBLE *p10 = p00 + 2;
+		//DOUBLE *p01=0, *p11=0;
+		double *p00 = (double*)(GenTransNumData.pData) + (iz*zPer + ix*xPer + (ie << 1)); //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+		double *p10 = p00 + 2;
+		double *p01=0, *p11=0;
 		double one_mi_er = 1.- er, ar = 1., one_mi_ar = 1.;
 
 		if(EXZ.VsXorZ == 'x')

@@ -92,7 +92,8 @@ class srTSend {
 	
 	srTHandleOfSRWRadStruct HandleOfSRWRadStruct;
 	
-	DOUBLE *pOutBtxData, *pOutXData, *pOutBtzData, *pOutZData;
+	//DOUBLE *pOutBtxData, *pOutXData, *pOutBtzData, *pOutZData;
+	double *pOutBtxData, *pOutXData, *pOutBtzData, *pOutZData; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	int hStateOutBtxData, hStateOutXData, hStateOutBtzData, hStateOutZData;
 
 	waveHndl wavH_OutBtxData, wavH_OutXData, wavH_OutBtzData, wavH_OutZData;
@@ -189,8 +190,17 @@ public:
 	int GetSASEPrecDataFormat1(srTPrecSASE&);
 	int GetSRWRadStructArray(srTSRWRadStructAccessData*& arSRWRadStructAccessData, int& numRadStruct);
 	int SetupSASEControlStruct(srTControlAccessSASE&, int numHarm);
-	int SetupControlStruct1D(waveHndl wText, long* Indices, long NewNp, DOUBLE NewStart, DOUBLE NewStep, waveHndl& wHndl, char*& pBase, int& hState);
-	int SetupControlStructMD(waveHndl wText, long* Indices, long* NewNpAr, DOUBLE* NewStartAr, DOUBLE* NewStepAr, int numDim, waveHndl& wHndl, char*& pBase, int& hState);
+
+#ifdef __IGOR_PRO__ //OC06062019
+	int SetupControlStruct1D(waveHndl wText, IndexInt* Indices, long long NewNp, double NewStart, double NewStep, waveHndl& wHndl, char*& pBase, int& hState); //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+	//int SetupControlStruct1D(waveHndl wText, IndexInt* Indices, long long NewNp, DOUBLE NewStart, DOUBLE NewStep, waveHndl& wHndl, char*& pBase, int& hState); //OC06062019 (port to XOP7)
+	//int SetupControlStruct1D(waveHndl wText, long long* Indices, long long NewNp, DOUBLE NewStart, DOUBLE NewStep, waveHndl& wHndl, char*& pBase, int& hState); //OC26042019 (port to XOP7)
+	//int SetupControlStruct1D(waveHndl wText, long* Indices, long NewNp, DOUBLE NewStart, DOUBLE NewStep, waveHndl& wHndl, char*& pBase, int& hState);
+	int SetupControlStructMD(waveHndl wText, IndexInt* Indices, long long* NewNpAr, double* NewStartAr, double* NewStepAr, int numDim, waveHndl& wHndl, char*& pBase, int& hState); //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+	//int SetupControlStructMD(waveHndl wText, IndexInt* Indices, long long* NewNpAr, DOUBLE* NewStartAr, DOUBLE* NewStepAr, int numDim, waveHndl& wHndl, char*& pBase, int& hState); //OC26042019 (port to XOP7)
+	//int SetupControlStructMD(waveHndl wText, long long* Indices, long long* NewNpAr, DOUBLE* NewStartAr, DOUBLE* NewStepAr, int numDim, waveHndl& wHndl, char*& pBase, int& hState); //OC26042019 (port to XOP7)
+	//int SetupControlStructMD(waveHndl wText, long* Indices, long* NewNpAr, DOUBLE* NewStartAr, DOUBLE* NewStepAr, int numDim, waveHndl& wHndl, char*& pBase, int& hState);
+#endif
 
 	int GetPropagRadStokesMultiElecDataFormat1(double* pPrecPar);
 	int GetWfrEmitPropagPrec(double* pPrecPar);
@@ -251,13 +261,14 @@ public:
 		basic_string<char> BufString = OutStream.str();
 		const char* OutString = BufString.c_str();
 
-		HSetState((Handle)(PhShData.wHndl), PhShData.hState);
+		//HSetState((Handle)(PhShData.wHndl), PhShData.hState); //OC26042019 (port to XOP7)
 		WaveHandleModified(PhShData.wHndl);
 
 		int result;
 		if(result = XOPSilentCommand(OutString)) return result;
 
-		long dataOffset;
+		//long dataOffset;
+		BCInt dataOffset; //OC26042019 (port to XOP7)
 		if(result = MDAccessNumericWaveData(PhShData.wHndl, kMDWaveAccessMode0, &dataOffset)) return result;
 		PhShData.hState = 0; //MoveLockHandle(PhShData.wHndl);
 		PhShData.pWaveData = (char*)(*(PhShData.wHndl)) + dataOffset;
@@ -267,7 +278,8 @@ public:
 		return 0;
 #endif
 	}
-	void ShowOutTrjDataPointers(DOUBLE*& Out_pOutBtxData, DOUBLE*& Out_pOutXData, DOUBLE*& Out_pOutBtzData, DOUBLE*& Out_pOutZData)
+	void ShowOutTrjDataPointers(double*& Out_pOutBtxData, double*& Out_pOutXData, double*& Out_pOutBtzData, double*& Out_pOutZData) //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+	//void ShowOutTrjDataPointers(DOUBLE*& Out_pOutBtxData, DOUBLE*& Out_pOutXData, DOUBLE*& Out_pOutBtzData, DOUBLE*& Out_pOutZData)
 	{
 #ifdef __IGOR_PRO__
 		Out_pOutBtxData = pOutBtxData; Out_pOutXData = pOutXData; Out_pOutBtzData = pOutBtzData; Out_pOutZData = pOutZData;
@@ -310,15 +322,19 @@ public:
 	{
 #ifdef __IGOR_PRO__
 		int result;
-		DOUBLE xStart = pWaveAccessData->DimStartValues[0];
-		DOUBLE xStep = pWaveAccessData->DimSteps[0];
+		//DOUBLE xStart = pWaveAccessData->DimStartValues[0];
+		//DOUBLE xStep = pWaveAccessData->DimSteps[0];
+		double xStart = pWaveAccessData->DimStartValues[0]; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+		double xStep = pWaveAccessData->DimSteps[0];
 		if(result = MDSetWaveScaling(pWaveAccessData->wHndl, ROWS, &xStep, &xStart)) return result;
 
-		DOUBLE yStart = pWaveAccessData->DimStartValues[1];
-		DOUBLE yStep = pWaveAccessData->DimSteps[1];
+		//DOUBLE yStart = pWaveAccessData->DimStartValues[1];
+		//DOUBLE yStep = pWaveAccessData->DimSteps[1];
+		double yStart = pWaveAccessData->DimStartValues[1]; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+		double yStep = pWaveAccessData->DimSteps[1];
 		if(result = MDSetWaveScaling(pWaveAccessData->wHndl, COLUMNS, &yStep, &yStart)) return result;
 
-		HSetState((Handle)(pWaveAccessData->wHndl), pWaveAccessData->hState);
+		//HSetState((Handle)(pWaveAccessData->wHndl), pWaveAccessData->hState); //OC26042019 (port to XOP7)
 		WaveHandleModified(pWaveAccessData->wHndl);
 		return 0;
 #else
@@ -332,7 +348,7 @@ public:
 	int FinishWorkingWithStokesStruct(srTStokesStructAccessData* pStokesAccessData)
 	{
 #ifdef __IGOR_PRO__
-		HSetState((Handle)(pStokesAccessData->wSto), pStokesAccessData->hStateSto);
+		//HSetState((Handle)(pStokesAccessData->wSto), pStokesAccessData->hStateSto); //OC26042019 (port to XOP7)
 		WaveHandleModified(pStokesAccessData->wSto);
 		return 0;
 #else
@@ -344,7 +360,7 @@ public:
 	int FinishWorkingWithPowDensStruct(srTPowDensStructAccessData* pPowDensAccessData)
 	{
 #ifdef __IGOR_PRO__
-		HSetState((Handle)(pPowDensAccessData->wPowDens), pPowDensAccessData->hStatePowDens);
+		//HSetState((Handle)(pPowDensAccessData->wPowDens), pPowDensAccessData->hStatePowDens); //OC26042019 (port to XOP7)
 		WaveHandleModified(pPowDensAccessData->wPowDens);
 		return 0;
 #else
@@ -355,7 +371,8 @@ public:
 	int FinishWorkingWithElecDistrStruct(srTEbmDat& EbmDat)
 	{
 #ifdef __IGOR_PRO__
-		return ReleaseWave(EbmDat.wElecDistr, EbmDat.hStateElecDistr);
+		//return ReleaseWave(EbmDat.wElecDistr, EbmDat.hStateElecDistr);
+		return ReleaseWave((waveHndl)EbmDat.wElecDistr, EbmDat.hStateElecDistr); //OC26042019 (port to XOP7)
 #else
 		return 0;
 #endif
@@ -365,7 +382,7 @@ public:
 	{
 #ifdef __IGOR_PRO__
 		int result;
-		HSetState((Handle)(WaveAccessData.wHndl), WaveAccessData.hState);
+		//HSetState((Handle)(WaveAccessData.wHndl), WaveAccessData.hState); //OC26042019 (port to XOP7)
 		WaveHandleModified(WaveAccessData.wHndl);
 		if(result = KillWave(WaveAccessData.wHndl)) return result;
 		WaveAccessData.pWaveData = 0;
@@ -498,15 +515,19 @@ public:
 
 	srTIgorRadFocusInputStruct* GetIgorRadFocusInputStructPtr() { return pIgorRadFocusInputStruct;}
 
-	int UpdateNumberPositionInSRWRad(srTSRWRadStructAccessData* pSRWRadStructAccessData, long* RadIndices, char* CharBuf, int AmOfBytes)
+	int UpdateNumberPositionInSRWRad(srTSRWRadStructAccessData* pSRWRadStructAccessData, IndexInt* RadIndices, char* CharBuf, int AmOfBytes) //OC06062019
+	//int UpdateNumberPositionInSRWRad(srTSRWRadStructAccessData* pSRWRadStructAccessData, long long* RadIndices, char* CharBuf, int AmOfBytes) //OC26042019
+	//int UpdateNumberPositionInSRWRad(srTSRWRadStructAccessData* pSRWRadStructAccessData, long* RadIndices, char* CharBuf, int AmOfBytes)
 	{
 		char* tCharBuf = CharBuf;
 
-		Handle textH = NewHandle(AmOfBytes);
+		//Handle textH = NewHandle(AmOfBytes);
+		Handle textH = WMNewHandle(AmOfBytes); //OC13112019 (port to XOP8 on MAC)
 		strncpy(*textH, CharBuf, AmOfBytes);
 		int result;
 		if(result = MDSetTextWavePointValue(pSRWRadStructAccessData->wRad, RadIndices, textH)) return result;
-		DisposeHandle(textH);
+		//DisposeHandle(textH);
+		WMDisposeHandle(textH); //OC13112019 (port to XOP8 on MAC)
 
 		for(int i=0; i<15; i++) *(tCharBuf++) = 0;
 		return 0;
@@ -514,34 +535,50 @@ public:
 	int UpdateTextPositionInSRWRad(srTSRWRadStructAccessData* pRad, int Index, char* Text)
 	{
 		int result;
-		long RadIndices[MAX_DIMENSIONS]; RadIndices[0] = Index;
+		//long RadIndices[MAX_DIMENSIONS]; RadIndices[0] = Index;
+		//long long RadIndices[MAX_DIMENSIONS]; RadIndices[0] = Index; //OC26042019 (port to XOP7)
+		IndexInt RadIndices[MAX_DIMENSIONS]; RadIndices[0] = Index; //OC06062019 (port to XOP7)
+
 		int AmOfBytes = (int)strlen(Text);
-		Handle textH = NewHandle(AmOfBytes);
+		//Handle textH = NewHandle(AmOfBytes);
+		Handle textH = WMNewHandle(AmOfBytes); //OC13112019 (port to XOP8 on MAC)
 		strncpy(*textH, Text, AmOfBytes);
 		if(result = MDSetTextWavePointValue(pRad->wRad, RadIndices, textH)) return result;
-		DisposeHandle(textH);
+		//DisposeHandle(textH);
+		WMDisposeHandle(textH); //OC13112019 (port to XOP8 on MAC)
 		return 0;
 	}
 	int UpdateTextWave1DPointValue(waveHndl& wavH, int Index, char* Text)
 	{
 		int result;
-		long Indices[MAX_DIMENSIONS]; Indices[0] = Index;
+		//long Indices[MAX_DIMENSIONS]; Indices[0] = Index;
+		//long long Indices[MAX_DIMENSIONS]; Indices[0] = Index; //OC26042019 (port to XOP7)
+		IndexInt Indices[MAX_DIMENSIONS]; Indices[0] = Index; //OC06062019 (port to XOP7)
+
 		int AmOfBytes = (int)strlen(Text);
-		Handle textH = NewHandle(AmOfBytes);
+		//Handle textH = NewHandle(AmOfBytes);
+		Handle textH = WMNewHandle(AmOfBytes); //OC13112019 (port to XOP8 on MAC)
 		strncpy(*textH, Text, AmOfBytes);
 		if(result = MDSetTextWavePointValue(wavH, Indices, textH)) return result;
-		DisposeHandle(textH);
+		//DisposeHandle(textH);
+		WMDisposeHandle(textH); //OC13112019 (port to XOP8 on MAC)
 		return 0;
 	}
 
-	int GetDoubleFromTextWave1D(waveHndl& wavH, int IndNo, double& Value)
+	int GetDoubleFromTextWave1D(waveHndl& wavH, long long IndNo, double& Value) //OC26042019 (port to XOP7)
+	//int GetDoubleFromTextWave1D(waveHndl& wavH, int IndNo, double& Value)
 	{
-		long RadIndices[MAX_DIMENSIONS];
+		//long RadIndices[MAX_DIMENSIONS];
+		//long long RadIndices[MAX_DIMENSIONS]; //OC26042019 (port to XOP7)
+		IndexInt RadIndices[MAX_DIMENSIONS]; //OC06062019 (port to XOP7)
+
 		RadIndices[0] = IndNo;
-		Handle textH = NewHandle(0L);
+		//Handle textH = NewHandle(0L);
+		Handle textH = WMNewHandle(0L); //OC13112019 (port to XOP8 on MAC)
 		int result;
 		if(result = MDGetTextWavePointValue(wavH, RadIndices, textH)) return result;
-		if(PtrAndHand("\0", textH, 1)) return MEMORY_ALLOCATION_FAILURE;
+		//if(PtrAndHand("\0", textH, 1)) return MEMORY_ALLOCATION_FAILURE;
+		if(WMPtrAndHand("\0", textH, 1)) return MEMORY_ALLOCATION_FAILURE; //OC13112019 (port to XOP8 on MAC)
 		if(textH != 0)
 		{
 			if(*textH != 0)
@@ -549,12 +586,14 @@ public:
 				Value = atof(*textH);
 				if((Value == 0.) && (**textH != '0') && (**textH != ' ')) 
 				{
-					DisposeHandle(textH);
+					//DisposeHandle(textH);
+					WMDisposeHandle(textH); //OC13112019 (port to XOP8 on MAC)
 					return ERROR_IN_READING_NUMBER_FROM_TEXT_WAVE;
 				}
 			}
 		}
-		DisposeHandle(textH);
+		//DisposeHandle(textH);
+		WMDisposeHandle(textH); //OC13112019 (port to XOP8 on MAC)
 		return 0;
 	}
 
@@ -576,7 +615,7 @@ public:
 	{
 		if(wHndl != NIL)
 		{
-			HSetState((Handle)wHndl, hState);
+			//HSetState((Handle)wHndl, hState); //OC26042019 (port to XOP7)
 			WaveHandleModified(wHndl);
 		}
 		return 0;
@@ -584,7 +623,9 @@ public:
 
 	int GetDataPointerAndStateAndLockNumericWave(waveHndl wavH, char*& DataPtr, int& hState)
 	{
-		long dataOffset, result = 0;
+		//long dataOffset, result = 0;
+		long result = 0;
+		BCInt dataOffset; //OC26042019 (port to XOP7)
 		if(result = MDAccessNumericWaveData(wavH, kMDWaveAccessMode0, &dataOffset)) return result;
 		hState = 0; //MoveLockHandle(wavH);
 		DataPtr = (char*)(*wavH) + dataOffset;
@@ -605,26 +646,35 @@ public:
 #ifdef __IGOR_PRO__
 		if(HandleOfSRWRadStruct.wRad == NIL) return false;
 
-		Handle textH = NewHandle(0L);
-		long RadIndices[MAX_DIMENSIONS];
+		//Handle textH = NewHandle(0L);
+		Handle textH = WMNewHandle(0L); //OC13112019 (port to XOP8 on MAC)
+		//long RadIndices[MAX_DIMENSIONS];
+		//long long RadIndices[MAX_DIMENSIONS]; //OC26042019 (port to XOP7)
+		IndexInt RadIndices[MAX_DIMENSIONS]; //OC06062019 (port to XOP7)
+
 		for(int i=0; i<MAX_DIMENSIONS; i++) RadIndices[i] = 0;
 		
 		RadIndices[0] = 0;
 		if(MDGetTextWavePointValue(HandleOfSRWRadStruct.wRad, RadIndices, textH)) return false;
-		if(PtrAndHand("\0", textH, 1)) return false;
+		//if(PtrAndHand("\0", textH, 1)) return false;
+		if(WMPtrAndHand("\0", textH, 1)) return false; //OC13112019 (port to XOP8 on MAC)
 		int len = (int)strlen(*textH);
 		if(len < 5) return false;
 		if(strcmp(*textH + len - 5, "X_rae") != 0) return false;
-		DisposeHandle(textH);
+		//DisposeHandle(textH);
+		WMDisposeHandle(textH); //OC13112019 (port to XOP8 on MAC)
 
-		textH = NewHandle(0L);
+		//textH = NewHandle(0L);
+		textH = WMNewHandle(0L); //OC13112019 (port to XOP8 on MAC)
 		RadIndices[0] = 1;
 		if(MDGetTextWavePointValue(HandleOfSRWRadStruct.wRad, RadIndices, textH)) return false;
-		if(PtrAndHand("\0", textH, 1)) return false;
+		//if(PtrAndHand("\0", textH, 1)) return false;
+		if(WMPtrAndHand("\0", textH, 1)) return false; //OC13112019 (port to XOP8 on MAC)
 		len = (int)strlen(*textH);
 		if(len < 5) return false;
 		if(strcmp(*textH + len - 5, "Z_rae") != 0) return false;
-		DisposeHandle(textH);
+		//DisposeHandle(textH);
+		WMDisposeHandle(textH); //OC13112019 (port to XOP8 on MAC)
 #endif
 
 		return true;
@@ -640,13 +690,13 @@ inline void srTSend::FinishTrjOutFormat1()
 
 #elif defined(__IGOR_PRO__)
 
-	HSetState((Handle)wavH_OutBtxData, hStateOutBtxData);
+	//HSetState((Handle)wavH_OutBtxData, hStateOutBtxData); //OC26042019 (port to XOP7)
 	WaveHandleModified(wavH_OutBtxData);
-	HSetState((Handle)wavH_OutXData, hStateOutXData);
+	//HSetState((Handle)wavH_OutXData, hStateOutXData); //OC26042019 (port to XOP7)
 	WaveHandleModified(wavH_OutXData);
-	HSetState((Handle)wavH_OutBtzData, hStateOutBtzData);
+	//HSetState((Handle)wavH_OutBtzData, hStateOutBtzData); //OC26042019 (port to XOP7)
 	WaveHandleModified(wavH_OutBtzData);
-	HSetState((Handle)wavH_OutZData, hStateOutZData);
+	//HSetState((Handle)wavH_OutZData, hStateOutZData); //OC26042019 (port to XOP7)
 	WaveHandleModified(wavH_OutZData);
 
 #endif
@@ -693,6 +743,10 @@ inline int srTSend::RadValDirectOut(complex<double>* RadVal)
 	if(gCallSpinProcess && SpinProcess()) return SR_COMP_PROC_ABORTED;
 	return 0;
 
+#else
+
+	return 0; //OC14052020
+
 #endif
 }
 
@@ -713,6 +767,10 @@ inline int srTSend::RadValDirectOut(srTEFourier& RadVal)
 
 	if(gCallSpinProcess && SpinProcess()) return SR_COMP_PROC_ABORTED;
 	return 0;
+
+#else
+
+	return 0; //OC14052020
 
 #endif
 }

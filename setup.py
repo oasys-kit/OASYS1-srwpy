@@ -36,7 +36,7 @@ with open(os.path.join(here, 'requirements.txt')) as requirements_file:
 
 # Prepare the extension:
 srwlpy_kwargs = {'include_dirs': ['core/src/lib'],
-                 'libraries': ['srw', 'fftw'],
+                 'libraries': ['srw_x64', 'libfftw3-3', 'libfftw3f-3', 'libfftw3l-3'] if sys.platform == 'win32' else ['srw', 'm', 'fftw3', 'fftw3f'] ,
                  'sources': ['core/src/clients/python/srwlpy.cpp']}
 
 if sys.platform == 'win32':
@@ -85,9 +85,13 @@ class OasysSRWBuild(build):
             super().run()
             sub_run(['make', '-C', os.path.join(here, 'core'), 'clean'])
 
+
+if sys.platform == 'win32': data_files = [('',['libfftw3-3.dll']),('',['libfftw3f-3.dll']),('',['libfftw3l-3.dll']),]
+else: data_files = []
+
 setup(
     name='oasys-srwpy',
-    version='1.0.3',
+    version='1.0.4',
     cmdclass={'build': OasysSRWBuild},
     description='Synchrotron Radiation Workshop',
     long_description=readme,
@@ -95,13 +99,13 @@ setup(
     author_email='srio@esrf.eu',
     url='https://github.com/oasys-kit/srwpy',
     packages=find_packages(exclude=['docs', 'tests']),
+    data_files=data_files,
     include_package_data=True,
     install_requires=requirements,
     license='BSD (3-clause)',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Natural Language :: English',
-        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
         'Operating System :: POSIX :: Linux',
         'Operating System :: MacOS :: MacOS X',

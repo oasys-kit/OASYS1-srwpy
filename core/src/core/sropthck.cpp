@@ -87,46 +87,56 @@ srTMirror::srTMirror(const SRWLOptMir& srwlMir)
 	m_extAlongOptAxIn = srwlMir.extIn;
 	m_extAlongOptAxOut = srwlMir.extOut;
 
-	m_reflData.pData = (char*)srwlMir.arRefl;
-	m_reflData.DataType[0] = 'c';
-	m_reflData.DataType[1] = 'd'; //?
-	m_reflData.AmOfDims = 3;
-	m_reflData.DimSizes[0] = srwlMir.reflNumPhEn;
-	m_reflData.DimSizes[1] = srwlMir.reflNumAng;
-	m_reflData.DimSizes[2] = srwlMir.reflNumComp;
-	m_reflData.DimStartValues[0] = 
-	m_reflData.DimStartValues[1] = srwlMir.reflAngStart;
-	m_reflData.DimStartValues[2] = 1;
+	m_reflData.pData = 0; //OC12082018
+	if(srwlMir.arRefl != 0)
+	{
+		m_reflData.pData = (char*)srwlMir.arRefl;
+		m_reflData.DataType[0] = 'c';
+		m_reflData.DataType[1] = 'd'; //?
+		m_reflData.AmOfDims = 3;
+		m_reflData.DimSizes[0] = srwlMir.reflNumPhEn;
+		m_reflData.DimSizes[1] = srwlMir.reflNumAng;
+		m_reflData.DimSizes[2] = srwlMir.reflNumComp;
+		m_reflData.DimStartValues[0] = srwlMir.reflPhEnStart;
+		m_reflData.DimStartValues[1] = srwlMir.reflAngStart;
+		m_reflData.DimStartValues[2] = 1;
+		
+		m_reflData.DimSteps[0] = 0;
+		//if(srwlMir.reflNumPhEn > 1) m_reflData.DimSteps[0] = (srwlMir.reflPhEnFin - srwlMir.reflPhEnStart)/(srwlMir.reflNumPhEn - 1);
+		m_reflData.DimSteps[1] = 0;
+		//if(srwlMir.reflNumAng > 1) m_reflData.DimSteps[1] = (srwlMir.reflAngFin - srwlMir.reflAngStart)/(srwlMir.reflNumAng - 1);
+		m_reflData.DimSteps[2] = 0;
 
-	if(strcmp(srwlMir.reflPhEnScaleType, "lin\0") == 0)
-	{
-		strcpy(m_reflData.DimScales[0], "lin\0");
-		m_reflData.DimSteps[0] = srwlMir.reflPhEnFin - srwlMir.reflPhEnStart;
-	}
-	else if(strcmp(srwlMir.reflPhEnScaleType, "log\0") == 0)
-	{
-		strcpy(m_reflData.DimScales[0], "log\0");
-		m_reflData.DimSteps[0] = log10(srwlMir.reflPhEnFin) - log10(srwlMir.reflPhEnStart);
-	}
-	if(srwlMir.reflNumPhEn > 1) m_reflData.DimSteps[0] /= (srwlMir.reflNumPhEn - 1);
-	if(strcmp(srwlMir.reflAngScaleType, "lin\0") == 0)
-	{
-		strcpy(m_reflData.DimScales[1], "lin\0");
-		m_reflData.DimSteps[1] = srwlMir.reflAngFin - srwlMir.reflAngStart;
-	}
-	else if(strcmp(srwlMir.reflAngScaleType, "log\0") == 0)
-	{
-		strcpy(m_reflData.DimScales[1], "log\0");
-		m_reflData.DimSteps[1] = log10(srwlMir.reflAngFin) - log10(srwlMir.reflAngStart);
-	}
-	if(srwlMir.reflNumAng > 1) m_reflData.DimSteps[1] /= (srwlMir.reflNumAng - 1);
+		if(strcmp(srwlMir.reflPhEnScaleType, "lin\0") == 0)
+		{
+			strcpy(m_reflData.DimScales[0], "lin\0");
+			if(srwlMir.reflNumPhEn > 1) m_reflData.DimSteps[0] = (srwlMir.reflPhEnFin - srwlMir.reflPhEnStart)/(srwlMir.reflNumPhEn - 1);
+		}
+		else if(strcmp(srwlMir.reflPhEnScaleType, "log\0") == 0)
+		{
+			strcpy(m_reflData.DimScales[0], "log\0");
+			if(srwlMir.reflNumPhEn > 1) m_reflData.DimSteps[0] = (log10(srwlMir.reflPhEnFin) - log10(srwlMir.reflPhEnStart))/(srwlMir.reflNumPhEn - 1);
+		}
+		//if(srwlMir.reflNumPhEn > 1) m_reflData.DimSteps[0] /= (srwlMir.reflNumPhEn - 1);
+		if(strcmp(srwlMir.reflAngScaleType, "lin\0") == 0)
+		{
+			strcpy(m_reflData.DimScales[1], "lin\0");
+			if(srwlMir.reflNumAng > 1) m_reflData.DimSteps[1] = (srwlMir.reflAngFin - srwlMir.reflAngStart)/(srwlMir.reflNumAng - 1);
+		}
+		else if(strcmp(srwlMir.reflAngScaleType, "log\0") == 0)
+		{
+			strcpy(m_reflData.DimScales[1], "log\0");
+			if(srwlMir.reflNumAng > 1) m_reflData.DimSteps[1] = (log10(srwlMir.reflAngFin) - log10(srwlMir.reflAngStart))/(srwlMir.reflNumAng - 1);
+		}
+		//if(srwlMir.reflNumAng > 1) m_reflData.DimSteps[1] /= (srwlMir.reflNumAng - 1);
 
-	strcpy(m_reflData.DimUnits[0], "eV");
-	strcpy(m_reflData.DimUnits[1], "rad");
-	m_reflData.DimUnits[2][0] = '\0';
-	m_reflData.DataUnits[0] = '\0';
-	m_reflData.DataName[0] = '\0';
-	m_reflData.hState = 1;
+		strcpy(m_reflData.DimUnits[0], "eV");
+		strcpy(m_reflData.DimUnits[1], "rad");
+		m_reflData.DimUnits[2][0] = '\0';
+		m_reflData.DataUnits[0] = '\0';
+		m_reflData.DataName[0] = '\0';
+		m_reflData.hState = 1;
+	}
 
 	m_vCenNorm.x = srwlMir.nvx; //central normal in the frame of incident beam
 	m_vCenNorm.y = srwlMir.nvy;
@@ -188,6 +198,7 @@ srTMirror* srTMirror::DefineMirror(char* sType, void* pvData)
 
 	if(strcmp(sType, "mirror: plane") == 0) pOutMir = new srTMirrorPlane(*((SRWLOptMirPl*)pvData));
 	else if(strcmp(sType, "mirror: ellipsoid") == 0) pOutMir = new srTMirrorEllipsoid(*((SRWLOptMirEl*)pvData));
+	else if(strcmp(sType, "mirror: paraboloid") == 0) pOutMir = new srTMirrorParaboloid(*((SRWLOptMirPar*)pvData));
 	else if(strcmp(sType, "mirror: toroid") == 0) pOutMir = new srTMirrorToroid(*((SRWLOptMirTor*)pvData));
 	else if(strcmp(sType, "mirror: sphere") == 0) pOutMir = new srTMirrorSphere(*((SRWLOptMirSph*)pvData));
 	else throw UNKNOWN_OPTICAL_ELEMENT;
@@ -523,8 +534,9 @@ void srTMirror::FindElemExtentsAlongOptAxes(gmTrans& trfMir, TVector3d& vCenNorm
 
 //*************************************************************************
 
+int srTMirror::WfrInterpolOnOrigGrid2(srTSRWRadStructAccessData* pWfr, double* arRayTrCoord, long long* arIndRayTrCoord, float* arEX, float* arEZ, double xMin, double xMax, double zMin, double zMax, double dxMax, double dzMax) //OC20082018
+//int srTMirror::WfrInterpolOnOrigGrid2(srTSRWRadStructAccessData* pWfr, double* arRayTrCoord, long long* arIndRayTrCoord, float* arEX, float* arEZ, double xMin, double xMax, double zMin, double zMax)
 //int srTMirror::WfrInterpolOnOrigGrid2(srTSRWRadStructAccessData* pWfr, double* arRayTrCoord, long* arIndRayTrCoord, float* arEX, float* arEZ, double xMin, double xMax, double zMin, double zMax)
-int srTMirror::WfrInterpolOnOrigGrid2(srTSRWRadStructAccessData* pWfr, double* arRayTrCoord, long long* arIndRayTrCoord, float* arEX, float* arEZ, double xMin, double xMax, double zMin, double zMax)
 {//OC18032016
 	if((pWfr == 0) || (arRayTrCoord == 0) || ((arEX == 0) && (arEZ == 0))) return FAILED_INTERPOL_ELEC_FLD;
 	//if((pWfr == 0) || (arRayTrCoord == 0) || (arOptPathDif == 0) || ((arEX == 0) && (arEZ == 0))) return FAILED_INTERPOL_ELEC_FLD;
@@ -539,10 +551,6 @@ int srTMirror::WfrInterpolOnOrigGrid2(srTSRWRadStructAccessData* pWfr, double* a
 		float *pPrevBaseRadZ = pWfr->pBaseRadZ;
 		pWfr->pBaseRadX = arEX;
 		pWfr->pBaseRadZ = arEZ;
-		
-		//testoc!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-		//TreatStronglyOscillatingTerm(*pWfr, 'r');
-		//end testoc!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		
 		//if(!((fabs(pWfr->RobsX + 0.99) < 0.1) && (fabs(pWfr->RobsZ + 0.99) < 0.1)))
 		//{//OCTEST
@@ -574,7 +582,6 @@ int srTMirror::WfrInterpolOnOrigGrid2(srTSRWRadStructAccessData* pWfr, double* a
 	long long nTot = PerZ*(pWfr->nz);
 
 	//OCTEST
-	//if((fabs(pWfr->RobsX + 20.596) < 0.1) && (fabs(pWfr->RobsZ + 18.079) < 0.1))
 	//if(fabs(pWfr->RobsZ + 18.079) < 0.1)
 	//{
 		//float *t_arEX = arEX, *t_arEZ = arEZ;
@@ -592,7 +599,16 @@ int srTMirror::WfrInterpolOnOrigGrid2(srTSRWRadStructAccessData* pWfr, double* a
 	double arReEx[4], arImEx[4], arReEz[4], arImEz[4], arIx[4], arIz[4]; //Aux. arrays to be used for interpolation
 	double dx, dz, ReE, ImE;
 
-	const int maxSearchRad = 3; //To tune
+	//const int maxSearchRad = 3; //To tune
+	//OC11082018 (the above didn't allow to find indCloseRayTrCoord for the case of Grating in Example #12)
+	int maxSearchRad = 20; //10; //100; //1000; //To tune
+	int halfNx_mi_2 = (pWfr->nx - 1) >> 1;
+	if(maxSearchRad > halfNx_mi_2) maxSearchRad = halfNx_mi_2;
+	int halfNz_mi_2 = (pWfr->nz - 1) >> 1;
+	if(maxSearchRad > halfNz_mi_2) maxSearchRad = halfNz_mi_2;
+
+	const double interpSafeFact = 2.5; //OC20082018
+
 	long ixMin = (long)((xMin - (pWfr->xStart))/(pWfr->xStep));
 	long ixMax = (long)((xMax - (pWfr->xStart))/(pWfr->xStep));
 	long izMin = (long)((zMin - (pWfr->zStart))/(pWfr->zStep));
@@ -601,11 +617,15 @@ int srTMirror::WfrInterpolOnOrigGrid2(srTSRWRadStructAccessData* pWfr, double* a
 	double z = pWfr->zStart;
 	for(long iz=0; iz<(pWfr->nz); iz++)
 	{
+		bool pointIsWithinVertLim = (zMin < z) && (z < zMax);
+
 		//long izHalfPerZ = iz*HalfPerZ;
 		long long izHalfPerZ = iz*HalfPerZ;
 		double x = pWfr->xStart;
 		for(long ix=0; ix<(pWfr->nx); ix++)
 		{
+			bool pointIsWithinTransvLim = (xMin < x) && (x < xMax) && pointIsWithinVertLim;
+
 			//long izHalfPerZ_p_ixHalfPerX = izHalfPerZ + ix*HalfPerX;
 			long long izHalfPerZ_p_ixHalfPerX = izHalfPerZ + ix*HalfPerX;
 			for(long ie=0; ie<(pWfr->ne); ie++)
@@ -613,113 +633,184 @@ int srTMirror::WfrInterpolOnOrigGrid2(srTSRWRadStructAccessData* pWfr, double* a
 				*t_ExRes = 0.; *(t_ExRes+1) = 0.;
 				*t_EzRes = 0.; *(t_EzRes+1) = 0.;
 
-				//OCTEST
-				//if(fabs(pWfr->RobsZ + 18.079) < 0.1)
-				//{
-				//	//if((ix == 1124) && (iz == 408))
-				//	//if((ix == 1585) && (iz == 198))
-				//	if((ix == 231) && (iz == 189))
-				//	{
-				//		int aha = 1;
-				//	}
-				//}
-				//END OCTEST
+						//OCTEST
+						//if(m_isGrating && (ix==207) && (iz==1425))
+						//if(m_isGrating && (ix==287) && (iz==1427))
+						//{
+						//	int aha = 1;
+						//}
+						//END OCTEST
 
 				//long indCloseRayTrCoord = arIndRayTrCoord[izHalfPerZ_p_ixHalfPerX + ie];
 				long long indCloseRayTrCoord = arIndRayTrCoord[izHalfPerZ_p_ixHalfPerX + ie];
-				if((indCloseRayTrCoord < 0) && ((xMin < x) && (x < xMax) && (zMin < z) && (z < zMax)))
+
+				if((indCloseRayTrCoord < 0) && pointIsWithinTransvLim) //OC19082018
+				//if((indCloseRayTrCoord < 0) && ((xMin < x) && (x < xMax) && (zMin < z) && (z < zMax)))
 				{//Try to find nearest non-negative value of the index
 
 					bool thereAreDataXL=false, thereAreDataXU=false;
 					bool thereAreDataYL=false, thereAreDataYU=false;
-					//long indFirstFound=-1;
 					long long indFirstFound=-1;
+
 					for(int ic=1; ic<=maxSearchRad; ic++)
 					{
 						int two_ic = ic << 1;
-						for(int icz=-ic; icz<=ic; icz+=two_ic)
+
+						if((indFirstFound < 0) || (!thereAreDataYL) || (!thereAreDataYU)) //OC12082018
+						//if(indFirstFound < 0) //OC12082018
 						{
-							long jz = iz + icz;
-							if((jz < izMin) || (jz > izMax)) continue;
-
-							//long jzHalfPerZ_p_ie = jz*HalfPerZ + ie;
-							long long jzHalfPerZ_p_ie = jz*HalfPerZ + ie;
-
-							for(int icx=-ic; icx<=ic; icx++)
-							{
-								long jx = ix + icx;
-								if((jx < ixMin) || (jx > ixMax)) continue;
-
-								//long testOfst = jzHalfPerZ_p_ie + jx*HalfPerX;
-								long long testOfst = jzHalfPerZ_p_ie + jx*HalfPerX;
-								//long testOfst = jzHalfPerZ_p_ie + ix*HalfPerX;
-								if((testOfst < 0) || (testOfst >= half_nTot)) continue;
-
-								//indCloseRayTrCoord = arIndRayTrCoord[testOfst];
-								//if(indCloseRayTrCoord >= 0) 
-								//long indCur = arIndRayTrCoord[testOfst];
-								long long indCur = arIndRayTrCoord[testOfst];
-								if(indCur >= 0) 
-								{
-									if(indFirstFound < 0) indFirstFound = indCur;
-
-									if(icz < 0) thereAreDataYL = true;
-									else thereAreDataYU = true;
-									break;
-								}
-							}
-							//if(indCloseRayTrCoord >= 0) break;
-						}
-						//if(indCloseRayTrCoord >= 0) break;
-						if((indFirstFound >= 0) && thereAreDataXL && thereAreDataXU && thereAreDataYL && thereAreDataYU)
-						{
-							indCloseRayTrCoord = indFirstFound;
-							break;
-						}
-
-						for(int icx=-ic; icx<=ic; icx+=two_ic)
-						{
-							long jx = ix + icx;
-							if((jx < ixMin) || (jx > ixMax)) continue;
-
-							//long jxHalfPerX_p_ie = jx*HalfPerX + ie;
-							long long jxHalfPerX_p_ie = jx*HalfPerX + ie;
-							for(int icz=-ic+1; icz<=(ic-1); icz++)
+							for(int icz=-ic; icz<=ic; icz+=two_ic)
 							{
 								long jz = iz + icz;
 								if((jz < izMin) || (jz > izMax)) continue;
 
-								//long testOfst = jxHalfPerX_p_ie + jz*HalfPerZ;
-								long long testOfst = jxHalfPerX_p_ie + jz*HalfPerZ;
-								//long testOfst = jxHalfPerX_p_ie + iz*HalfPerZ;
-								if((testOfst < 0) || (testOfst >= half_nTot)) continue;
-
-								//indCloseRayTrCoord = arIndRayTrCoord[testOfst];
-								//if(indCloseRayTrCoord >= 0) break;
-								//long indCur = arIndRayTrCoord[testOfst];
-								long long indCur = arIndRayTrCoord[testOfst];
-								if(indCur >= 0) 
+								//long jzHalfPerZ_p_ie = jz*HalfPerZ + ie;
+								long long jzHalfPerZ_p_ie = jz*HalfPerZ + ie;
+								for(int icx=-ic; icx<=ic; icx++)
 								{
-									if(indFirstFound < 0) indFirstFound = indCur;
-								
-									if(icx < 0) thereAreDataXL = true;
-									else thereAreDataXU = true;
+									//long jx = ix + icx;
+									long icxCor = icx + ic; //OC21082018
+									if(icxCor > 0)
+									{
+										int icxCor_d_2 = icxCor >> 1;
+										if((icxCor_d_2 << 1) != icxCor) icxCor = -(icxCor_d_2 + 1);
+										else icxCor = icxCor_d_2;
+									}
+									long jx = ix + icxCor; //OC21082018
+									if((jx < ixMin) || (jx > ixMax)) continue;
+
+									//long testOfst = jzHalfPerZ_p_ie + jx*HalfPerX;
+									long long testOfst = jzHalfPerZ_p_ie + jx*HalfPerX;
+									//long testOfst = jzHalfPerZ_p_ie + ix*HalfPerX;
+									if((testOfst < 0) || (testOfst >= half_nTot)) continue;
+
+									//indCloseRayTrCoord = arIndRayTrCoord[testOfst];
+									//if(indCloseRayTrCoord >= 0) 
+									//long indCur = arIndRayTrCoord[testOfst];
+									long long indCur = arIndRayTrCoord[testOfst];
+									if(indCur >= 0)
+									{
+										if(indFirstFound < 0) 
+										{
+											indFirstFound = indCur;
+										}
+										//else
+										//{//OC12082018
+										//	if(icz >= 0) thereAreDataYU = true;
+										//}
+										//if(icz < 0) thereAreDataYL = true;
+
+										if(icz < 0) thereAreDataYL = true;
+										else thereAreDataYU = true;
+										break;
+									}
+								}
+								//if(indCloseRayTrCoord >= 0) break;
+								//OC11082018
+								if((indFirstFound >= 0) && thereAreDataYL && thereAreDataYU) 
+								{
 									break;
 								}
+								//if(indFirstFound >= 0)
+								//{
+								//	//indCloseRayTrCoord = indFirstFound;
+								//	break;
+								//}
 							}
-							//if(indCloseRayTrCoord >= 0) break;
 						}
 						//if(indCloseRayTrCoord >= 0) break;
 						if((indFirstFound >= 0) && thereAreDataXL && thereAreDataXU && thereAreDataYL && thereAreDataYU)
+						//OC12082018: problems with Example #12 showed "negative" impact of thereAreDataXL, thereAreDataXU, thereAreDataYL, thereAreDataYU
+						//if(indFirstFound >= 0)
 						{
 							indCloseRayTrCoord = indFirstFound;
 							break;
+						}
+
+						if((indFirstFound < 0) || (!thereAreDataXL) || (!thereAreDataXU)) //OC12082018
+						//if(indFirstFound < 0) //OC12082018
+						{
+							for(int icx=-ic; icx<=ic; icx+=two_ic)
+							{
+								long jx = ix + icx;
+								if((jx < ixMin) || (jx > ixMax)) continue;
+
+								//long jxHalfPerX_p_ie = jx*HalfPerX + ie;
+								long long jxHalfPerX_p_ie = jx*HalfPerX + ie;
+								for(int icz=-ic+1; icz<=(ic-1); icz++)
+								{
+									//long jz = iz + icz;
+									long iczCor = icz + ic - 1; //OC21082018
+									if(iczCor > 0)
+									{
+										int iczCor_d_2 = iczCor >> 1;
+										if((iczCor_d_2 << 1) != iczCor) iczCor = -(iczCor_d_2 + 1);
+										else iczCor = iczCor_d_2;
+									}
+									long jz = iz + iczCor; //OC21082018
+									if((jz < izMin) || (jz > izMax)) continue;
+
+									//long testOfst = jxHalfPerX_p_ie + jz*HalfPerZ;
+									long long testOfst = jxHalfPerX_p_ie + jz*HalfPerZ;
+									//long testOfst = jxHalfPerX_p_ie + iz*HalfPerZ;
+									if((testOfst < 0) || (testOfst >= half_nTot)) continue;
+
+									//indCloseRayTrCoord = arIndRayTrCoord[testOfst];
+									//if(indCloseRayTrCoord >= 0) break;
+									//long indCur = arIndRayTrCoord[testOfst];
+									long long indCur = arIndRayTrCoord[testOfst];
+									if(indCur >= 0)
+									{
+										if(indFirstFound < 0) 
+										{
+											indFirstFound = indCur;
+										}
+										//else
+										//{//OC12082018
+										//	if(icx >= 0) thereAreDataXU = true;
+										//}
+										//if(icx < 0) thereAreDataXL = true;
+
+										if(icx < 0) thereAreDataXL = true;
+										else thereAreDataXU = true;
+										break;
+									}
+								}
+								//if(indCloseRayTrCoord >= 0) break;
+								//OC11082018
+								if((indFirstFound >= 0) && thereAreDataXL && thereAreDataXU) 
+								{
+									break;
+								}
+								//if(indFirstFound >= 0)
+								//{
+								//	//indCloseRayTrCoord = indFirstFound;
+								//	break;
+								//}
+							}
+						}
+					
+						//if(indCloseRayTrCoord >= 0) break;
+						if((indFirstFound >= 0) && thereAreDataXL && thereAreDataXU && thereAreDataYL && thereAreDataYU)
+						//OC12082018: problems with Example #12 showed "negative" impact of thereAreDataXL, thereAreDataXU, thereAreDataYL, thereAreDataYU
+						//if(indFirstFound >= 0)
+						{
+							indCloseRayTrCoord = indFirstFound;
+							break;
+						}
+
+						//if(((fabs(ic*(pWfr->xStep)) > dxMax*interpSafeFact) && ((!thereAreDataXL) || (!thereAreDataXU))) ||
+						//   ((fabs(ic*(pWfr->zStep)) > dzMax*interpSafeFact) && ((!thereAreDataYL) || (!thereAreDataYU)))) //OC20082018
+						if((indFirstFound < 0) && ((fabs(ic*(pWfr->xStep)) > dxMax*interpSafeFact) || (fabs(ic*(pWfr->zStep)) > dzMax*interpSafeFact))) //OC20082018
+						{
+							break; //Stop search for a good point over a too large range
 						}
 					}
 				}
 
 				//if(indCloseRayTrCoord >= 0) 
-				if((indCloseRayTrCoord >= 0) && ((xMin <= x) && (x <= xMax) && (zMin <= z) && (z <= zMax))) //OC03072017 (trying to avoid having an aventual "nan" in the resulting field data)
+				//if((indCloseRayTrCoord >= 0) && ((xMin <= x) && (x <= xMax) && (zMin <= z) && (z <= zMax))) //OC03072017 (trying to avoid having an aventual "nan" in the resulting field data)
+				if((indCloseRayTrCoord >= 0) && pointIsWithinTransvLim) //OC19082018
 				{
 					double *pRayTrCoord = arRayTrCoord + indCloseRayTrCoord;
 					double xCloseRayTr = *pRayTrCoord;
@@ -1008,7 +1099,7 @@ int srTMirror::WfrInterpolOnOrigGrid2(srTSRWRadStructAccessData* pWfr, double* a
 							double resIx = CGenMathInterp::Interp2dBiLinVar(relX, relZ, arRelCoordXZ, arIx);
 							if(resIx <= 0)
 							{
-								resReEx = 0.; resImEx *= 0.;
+								resReEx = 0.; resImEx = 0.;
 							}
 							else 
 							{
@@ -1034,7 +1125,7 @@ int srTMirror::WfrInterpolOnOrigGrid2(srTSRWRadStructAccessData* pWfr, double* a
 							double resIz = CGenMathInterp::Interp2dBiLinVar(relX, relZ, arRelCoordXZ, arIz);
 							if(resIz <= 0)
 							{
-								resReEz = 0.; resImEz *= 0.;
+								resReEz = 0.; resImEz = 0.;
 							}
 							else
 							{
@@ -1826,7 +1917,9 @@ int srTMirror::PropagateRadiationSimple_LocRayTracing(srTSRWRadStructAccessData*
 	{//Propagate wavefront back (by -m_extAlongOptAxIn) to the beginning of the optical element using Wavefront Propagation through a Drift
 		srTRadResizeVect dummyResizeVect; //consider removing this completely
 		srTDriftSpace driftIn(-m_extAlongOptAxIn);
-		driftIn.PropBufVars.UseExactRxRzForAnalytTreatQuadPhaseTerm = true;
+		
+		//driftIn.PropBufVars.UseExactRxRzForAnalytTreatQuadPhaseTerm = true;
+		m_ParPrecWfrPropag.UseExactRxRzForAnalytTreatQuadPhaseTerm = 1; //OC06092019
 		if(res = driftIn.PropagateRadiation(pRadAccessData, m_ParPrecWfrPropag, dummyResizeVect)) return res;
 	}
 
@@ -1962,6 +2055,12 @@ int srTMirror::PropagateRadiationSimple_LocRayTracing(srTSRWRadStructAccessData*
 	double EsigRe, EsigIm, EpiRe, EpiIm;
 	double grMult;
 
+	double dxOutMin = 1.e+23*(pRadAccessData->nx)*(pRadAccessData->xStep); //OC20082018
+	double dxOutMax = 0.;
+	double dyOutMin = 1.e+23*(pRadAccessData->nz)*(pRadAccessData->zStep);
+	double dyOutMax = 0.;
+	double xRelOutPrev = 1.e+23, yRelOutPrev = 1.e+23;
+
 	for(long ie=0; ie<pRadAccessData->ne; ie++)
 	{
 		double TwoPi_d_LambdaM = ePh*5.067730652e+06;
@@ -1969,6 +2068,7 @@ int srTMirror::PropagateRadiationSimple_LocRayTracing(srTSRWRadStructAccessData*
 
 		if(m_isGrating) grMult = m_grM/(806554.3835*ePh);
 	
+		bool coordOutFoundY = false;
 		y = pRadAccessData->zStart;
 		for(long iy=0; iy<pRadAccessData->nz; iy++)
 		{
@@ -1987,6 +2087,7 @@ int srTMirror::PropagateRadiationSimple_LocRayTracing(srTSRWRadStructAccessData*
 
 			//bool firstHitForThisY = true; //OC19032016
 
+			bool coordOutFoundX = false;
 			x = pRadAccessData->xStart;
 			for(long ix=0; ix<pRadAccessData->nx; ix++)
 			{
@@ -2008,16 +2109,6 @@ int srTMirror::PropagateRadiationSimple_LocRayTracing(srTSRWRadStructAccessData*
 
 				//*pAuxRayTrCoordX = (float)(-1.E+23); *pAuxRayTrCoordY = (float)(-1.E+23);
 				*pAuxRayTrCoordX = -1.E+23; *pAuxRayTrCoordY = -1.E+23;
-
-								//OCTEST
-								//if(fabs(pRadAccessData->RobsZ + 18.079) < 0.1)
-								//{
-									//if((ix == 1124) && (iz == 408))
-									//{
-									//int aha = 1;
-									//}
-								//}
-								//END OCTEST
 
 				//long *pAuxIndRayTrCoord = arAuxIndRayTrCoord + iyHalfPerY_p_ie + ix*HalfPerX;
 				//*pAuxIndRayTrCoord = -1;
@@ -2214,6 +2305,23 @@ int srTMirror::PropagateRadiationSimple_LocRayTracing(srTSRWRadStructAccessData*
 							*pAuxRayTrCoordX = xRelOut;
 							*pAuxRayTrCoordY = yRelOut;
 
+							if(coordOutFoundX) //OC20082018
+							{
+								double dxOut = fabs(xRelOut - xRelOutPrev);
+								if(dxOutMin > dxOut) dxOutMin = dxOut;
+								else if(dxOutMax < dxOut) dxOutMax = dxOut;
+							}
+							if(coordOutFoundY) //OC20082018
+							{
+								double dyOut = fabs(yRelOut - yRelOutPrev);
+								if(dyOutMin > dyOut) dyOutMin = dyOut;
+								else if(dyOutMax < dyOut) dyOutMax = dyOut;
+							}
+							xRelOutPrev = xRelOut;
+							yRelOutPrev = yRelOut;
+							coordOutFoundX = true;
+							coordOutFoundY = true;
+
 									//OCTEST
 									//if(y > 0)
 									//if(y > 0.0043)
@@ -2261,22 +2369,12 @@ int srTMirror::PropagateRadiationSimple_LocRayTracing(srTSRWRadStructAccessData*
 
 								arAuxIndRayTrCoord[ofstTrfCoord] = ofstToSet;
 
-								//OCTEST
-								//if(fabs(pRadAccessData->RobsZ + 18.079) < 0.1)
-								//{
-									//if((ix == 1124) && (iz == 408))
+									//OCTEST
+									//if(m_isGrating && (ix==207))
 									//{
-									//int aha = 1;
+									//	int aha = 1;
 									//}
-								//}
-								//END OCTEST
-
-								//double angE2 = tgAngX*tgAngX + tgAngY*tgAngY;
-								//double angFact = 1. + angE2*(0.5 + angE2*((5./24.) + (61./720.)*angE2));
-								//////double angFact = 1. + angE2*0.5;
-								////double optPathDif = optPath - (m_extAlongOptAxIn + m_extAlongOptAxOut)*angFact; //L/cos(alpha)
-								//////double optPathDif = optPath - (m_extAlongOptAxIn + m_extAlongOptAxOut); //L/cos(alpha)
-								//double optPathDif = optPath;
+									//END OCTEST
 
 								//last commented:
 								//double phShift = TwoPi_d_LambdaM*optPathDif; //to check sign!
@@ -2311,7 +2409,7 @@ int srTMirror::PropagateRadiationSimple_LocRayTracing(srTSRWRadStructAccessData*
 										*pEyReRes = (float)NewEzRe; *pEyImRes = (float)NewEzIm;
 									}
 
-									//test!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+									//OCTEST
 									//double Pi_d_Lambda_m = ePh*2.533840802E+06;
 									//double xRel = x - TransvCenPoint.x, zRel = y - TransvCenPoint.y;
 
@@ -2323,7 +2421,7 @@ int srTMirror::PropagateRadiationSimple_LocRayTracing(srTSRWRadStructAccessData*
 									//float NewEzRe = (*pEzRe)*cosPh - (*pEzIm)*sinPh;
 									//float NewEzIm = (*pEzRe)*sinPh + (*pEzIm)*cosPh;
 									//*pEyReRes = NewEzRe; *pEyImRes = NewEzIm; 
-									//end test!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+									//END OCTEST
 
 									//*pExRe = phShift; *pExIm = 0; 
 									//*pEzRe = phShift; *pEzIm = 0; 
@@ -2421,9 +2519,10 @@ int srTMirror::PropagateRadiationSimple_LocRayTracing(srTSRWRadStructAccessData*
 										//*pExReRes = xRelOut; *pExImRes = yRelOut;
 										//*pEyReRes = xRelOut; *pEyImRes = yRelOut;
 									//}
-									//end OCTEST!!!!!!!!!!!!!!!!!!!!!
+									//END OCTEST!!!!!!!!!!!!!!!!!!!!!
 								}
 							}
+
 							//firstHitForThisY = false; //OC19032016
 						}
 					}
@@ -2439,9 +2538,12 @@ int srTMirror::PropagateRadiationSimple_LocRayTracing(srTSRWRadStructAccessData*
 	//if(res = WfrInterpolOnOrigGrid(pRadAccessData, arAuxRayTrCoord, arAuxEX, arAuxEY, xRelOutMin, xRelOutMax, yRelOutMin, yRelOutMax)) return res;
 	//OCTEST
 	//if(fabs(pRadAccessData->RobsZ + 18.079) > 0.1)
+	//if(!m_isGrating)
 	//{//OCTEST
 
-	if(res = WfrInterpolOnOrigGrid2(pRadAccessData, arAuxRayTrCoord, arAuxIndRayTrCoord, arAuxEX, arAuxEY, xRelOutMin, xRelOutMax, yRelOutMin, yRelOutMax)) return res;
+	//if(res = WfrInterpolOnOrigGrid2(pRadAccessData, arAuxRayTrCoord, arAuxIndRayTrCoord, arAuxEX, arAuxEY, xRelOutMin, xRelOutMax, yRelOutMin, yRelOutMax)) return res;
+	//OC20082018
+	if(res = WfrInterpolOnOrigGrid2(pRadAccessData, arAuxRayTrCoord, arAuxIndRayTrCoord, arAuxEX, arAuxEY, xRelOutMin, xRelOutMax, yRelOutMin, yRelOutMax, dxOutMax, dyOutMax)) return res;
 
 	//}
 	//else
@@ -2462,7 +2564,9 @@ int srTMirror::PropagateRadiationSimple_LocRayTracing(srTSRWRadStructAccessData*
 	{//Propagate wavefront back (by -m_extAlongOptAxOut) to the center of the optical element using Wavefront Propagation through a Drift
 		srTRadResizeVect dummyResizeVect; //consider removing this completely
 		srTDriftSpace driftOut(-m_extAlongOptAxOut);
-		driftOut.PropBufVars.UseExactRxRzForAnalytTreatQuadPhaseTerm = true;
+
+		//driftOut.PropBufVars.UseExactRxRzForAnalytTreatQuadPhaseTerm = true;
+		m_ParPrecWfrPropag.UseExactRxRzForAnalytTreatQuadPhaseTerm = 1; //OC06092019
 		if(res = driftOut.PropagateRadiation(pRadAccessData, m_ParPrecWfrPropag, dummyResizeVect)) return res;
 	}
 
@@ -2490,7 +2594,9 @@ int srTMirror::PropagateRadiationSimple_FourierByParts(srTSRWRadStructAccessData
 	//to make optional, assuming that the wavefront can be supplied already before the optical element, and not in its middle 
 	srTRadResizeVect dummyResizeVect; //consider removing this completely
 	srTDriftSpace driftIn(-m_extAlongOptAxIn);
-	driftIn.PropBufVars.UseExactRxRzForAnalytTreatQuadPhaseTerm = true;
+
+	//driftIn.PropBufVars.UseExactRxRzForAnalytTreatQuadPhaseTerm = true;
+	m_ParPrecWfrPropag.UseExactRxRzForAnalytTreatQuadPhaseTerm = 1; //OC06092019
 	if(res = driftIn.PropagateRadiation(pRadAccessData, m_ParPrecWfrPropag, dummyResizeVect)) return res;
 
 	//m_pRadAux = new srTSRWRadStructAccessData(pRadAccessData); //to propagate "old" wavefront part
@@ -2503,7 +2609,8 @@ int srTMirror::PropagateRadiationSimple_FourierByParts(srTSRWRadStructAccessData
 	//propagate through the optical element by steps
 	double stepProp = (m_extAlongOptAxIn + m_extAlongOptAxOut)/m_numPartsProp;
 	srTDriftSpace driftStep(stepProp);
-	driftStep.PropBufVars.UseExactRxRzForAnalytTreatQuadPhaseTerm = true;
+
+	//driftStep.PropBufVars.UseExactRxRzForAnalytTreatQuadPhaseTerm = true; //OC06092019 (commented-out)
 
 	m_longPosStartPropPart = 0.; m_longPosEndPropPart = stepProp;
 
@@ -2630,10 +2737,12 @@ void srTMirror::RadPointModifier_FourierByParts(srTEXZ& EXZ, srTEFieldPtrs& EPtr
 	double EpiRe = vEr*vPi, EpiIm = vEi*vPi;
 
 	//getting complex reflecivity coefficients for Sigma and Pi components of the electric field
-	int ne = m_reflData.DimSizes[1];
+	//int ne = m_reflData.DimSizes[1];
+	long ne = (long)(m_reflData.DimSizes[1]); //OC28042019
 	double eStart = m_reflData.DimStartValues[1];
 	double eStep = m_reflData.DimSteps[1];
-	int nAng = m_reflData.DimSizes[2];
+	//int nAng = m_reflData.DimSizes[2];
+	long nAng = (long)(m_reflData.DimSizes[2]); //OC28042019
 	double angStart = m_reflData.DimStartValues[2];
 	double angStep = m_reflData.DimSteps[2];
 
@@ -2761,17 +2870,33 @@ srTMirrorEllipsoid::srTMirrorEllipsoid(const SRWLOptMirEl& srwlMirEl) : srTMirro
 
 //*************************************************************************
 
+srTMirrorParaboloid::srTMirrorParaboloid(const SRWLOptMirPar& srwlMirPar) : srTMirror(srwlMirPar.baseMir)
+{
+	m_f = srwlMirPar.f;
+	m_uc = srwlMirPar.uc;
+	m_angGraz = srwlMirPar.angGraz;
+	m_radSag = srwlMirPar.radSag;
+
+	//Validate parameters: make sure all are positive
+	if((m_f <= 0) || ((m_uc != 'f') && (m_uc != 'c')) || (m_angGraz <= 0) || (m_radSag <= 0))
+	{ ErrorCode = IMPROPER_OPTICAL_COMPONENT_PARABOLOID; return;} //throw here?
+
+	//Determine paraboloid parameters in Local frame
+	DetermineParaboloidParamsInLocFrame(); 
+
+	//Estimate focal lengths:
+	double radTan = 2*m_f/sin(m_angGraz); //?
+	EstimateFocalLengths(radTan, m_radSag);
+}
+
+//*************************************************************************
+
 srTMirrorSphere::srTMirrorSphere(const SRWLOptMirSph& srwlMirSph) : srTMirror(srwlMirSph.baseMir)
 {
 	m_rad = srwlMirSph.rad;
 
 	//Validate parameters: make sure all are positive
 	if(m_rad == 0) { ErrorCode = IMPROPER_OPTICAL_COMPONENT_MIRROR_SPHERE; return;} //throw here?
-
-/*
-	//Determine ellipsoid parameters in Local frame
-	DetermineEllipsoidParamsInLocFrame(); 
-*/
 
 	//Estimate focal lengths:
 	EstimateFocalLengths(m_rad, m_rad);

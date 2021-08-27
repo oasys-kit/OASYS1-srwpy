@@ -6,11 +6,12 @@ import os
 import sys
 import subprocess
 import platform
+from array import *
+from math import *
 import numpy as np
-from array import array
-from oasys_srw.uti_plot_com import file_load, rescale_range
-from oasys_srw.uti_math import interp_2d
-from oasys_srw.uti_plot import DEFAULT_BACKEND
+import uti_plot_com
+import uti_math
+import uti_plot
 
 class Backend(object):
     def __init__(self, backend, fname_format):
@@ -27,7 +28,7 @@ class Backend(object):
             import matplotlib.pyplot
             self._pl = matplotlib.pyplot
         else:
-            if backend == DEFAULT_BACKEND:
+            if backend == uti_plot.DEFAULT_BACKEND:
                 (backend, fname_format) = self._default_backend(fname_format)
             matplotlib.use(backend)
             import matplotlib.pyplot
@@ -54,6 +55,11 @@ class Backend(object):
     def uti_plot1d_ir(self, arY, arX, labels=('Longitudinal Position [m]', 'Horizontal Position [m]')): #1D plot on irregular mesh
         fig = self._pl.figure()
         self._plot_1D_ir(arY, arX, labels, fig)
+        return self._maybe_savefig(fig)
+
+    def uti_plot1d_m(self, ars, labels=('X', 'Y'), styles=None, legend=None): #OC25102019
+        fig = self._pl.figure()
+        self._plot_1D_m(ars, labels, fig, styles=styles, legend=legend)
         return self._maybe_savefig(fig)
 
     #def plot2D(ar2d,x_range,y_range,labels=('Horizontal position, mm','Vertical position, mm')):
@@ -88,7 +94,7 @@ class Backend(object):
         arCutX = array('d', [0]*nx)
         xx = x0
         for ix in range(nx):
-            arCutX[ix] = interp_2d(xx, yc, x0, xStep, nx, y0, yStep, ny, data, inperpOrd, 1, 0)
+            arCutX[ix] = uti_math.interp_2d(xx, yc, x0, xStep, nx, y0, yStep, ny, data, inperpOrd, 1, 0)
             xx += xStep
         if _graphs_joined: self._plot_1D(arCutX, x_range, label1H, fig, 132) #OC150814
         else: self.uti_plot1d(arCutX, x_range, label1H)
@@ -98,7 +104,7 @@ class Backend(object):
         yy = y0
         for iy in range(ny):
             #arCutY[iy] = _interp_2d(xc, yy, x0, xStep, nx, y0, yStep, ny, data, inperpOrd, 1, 0)
-            arCutY[iy] = interp_2d(xc, yy, x0, xStep, nx, y0, yStep, ny, data, inperpOrd, 1, 0)
+            arCutY[iy] = uti_math.interp_2d(xc, yy, x0, xStep, nx, y0, yStep, ny, data, inperpOrd, 1, 0)
             yy += yStep
         if _graphs_joined: self._plot_1D(arCutY, y_range, label1V, fig, 133)
         else: self.uti_plot1d(arCutY, y_range, label1V)
@@ -145,12 +151,12 @@ class Backend(object):
         #        print('Cannot resize the image - scipy.ndimage.zoom() cannot be imported.')
         #        pass
 
-        data, mode, allrange, arLabels, arUnits = file_load(_fname, _read_labels, _multicolumn_data) #MR31102017
+        data, mode, allrange, arLabels, arUnits = uti_plot_com.file_load(_fname, _read_labels, _multicolumn_data) #MR31102017
         if not _multicolumn_data:
             data = np.array(data)
         #if mode == 3: #OC17112017 (commented-out)
         #    try:
-        #        fwhm_dict = fwhm(np.linspace(allrange[0], allrange[1], allrange[2]), data, return_as_dict=True)
+        #        fwhm_dict = uti_math.fwhm(np.linspace(allrange[0], allrange[1], allrange[2]), data, return_as_dict=True)
         #    except:
         #        fwhm_dict = {'fwhm': -1}
         #    print('FWHM: {:.5f} [{}]'.format(fwhm_dict['fwhm'], arUnits[0]))
@@ -251,6 +257,8 @@ class Backend(object):
         if isinstance(ar1d,(list,array)): ar1d = np.array(ar1d)
 
         x = np.linspace(x_range[0],x_range[1],x_range[2])
+        #print('_plot_1D:', x_range)
+        
         ax = fig.add_subplot(typ)
         ax.plot(x,ar1d)
         ax.grid()
@@ -260,37 +268,157 @@ class Backend(object):
         if(len(labels) > 2):
             ax.set_title(labels[2])
 
-    def _plot_2D(self, ar2d, x_range, y_range, labels, fig, typ=111):
-        totLen = int(x_range[2]*y_range[2])
-        lenAr2d = len(ar2d)
-        if lenAr2d > totLen: ar2d = np.array(ar2d[0:totLen])
-        elif lenAr2d < totLen:
-            auxAr = array('d', [0]*lenAr2d)
-            for i in range(lenAr2d): auxAr[i] = ar2d[i]
-            ar2d = np.array(auxAr)
+    def _plot_1D_m(self, ars, labels, fig, typ=111, styles=None, legend=None): #OC25102019
+        #Assumed: ars = [curve_1,curve_2,...], where curve_i can be:
+        # curve_i = [[y1_i,y2_i,...],[x_min_i,x_max_i,nx_i]] or
+        # curve_i = [[y1_i,y2_i,...],[x1_i,x2_i,...]] or
+        # curve_i = [[x1_i,y1_i],[x2_i,y2_i],...] 
 
-        #if isinstance(ar2d,(list,array)): ar2d = np.array(ar2d).reshape(x_range[2],y_range[2])
-        if isinstance(ar2d,(list,array)): ar2d = np.array(ar2d)
-        ar2d = ar2d.reshape(y_range[2],x_range[2])
-
-        x = np.linspace(x_range[0],x_range[1],x_range[2])
-        y = np.linspace(y_range[0],y_range[1],y_range[2])
+        nCurves = len(ars)
         ax = fig.add_subplot(typ)
-        #ax.pcolormesh(x,y,ar2d.T,cmap=_pl.cm.Greys_r)
-        #ax.pcolormesh(x,y,ar2d,cmap=_pl.cm.Greys_r)
-        ax.pcolormesh(x,y,ar2d,cmap=self._pl.cm.Greys_r) #OC150814
-        
-        ax.set_xlim(x[0],x[-1])
-        ax.set_ylim(y[0],y[-1])
+
+        legendWasUsed = False
+        for i in range(nCurves):
+            ar_i = ars[i] #individual curve
+            len_ar_i = len(ar_i)
+
+            curStyle = None
+            if(styles is not None):
+                if(isinstance(styles, (list, array))):
+                    if(i < len(styles)): curStyle = styles[i]
+            curLegend = None
+            if(legend is not None):
+                if(isinstance(legend, (list, array))):
+                    if(i < len(legend)): curLegend = legend[i]
+                    
+            arx = None
+            ary = None
+
+            if(len_ar_i == 2):
+                ar_i_0 = ar_i[0]
+                ar_i_1 = ar_i[1]
+                len_ar_i_0 = len(ar_i_0)
+                len_ar_i_1 = len(ar_i_1)
+                #if((len_ar_i_1 == 3) and (len_ar_i_0 == 3)): 
+                #    if(ar_i_1[2] == 3): #assuming [[y1,y2,y3],[x_min_i,x_max_i,nx_i]]
+                #        ary = ar_i_0
+                #        arx = np.linspace(ar_i_1[0], ar_i_1[1], ar_i_1[2])
+                #    else: #assuming [[y1,y2,y3],[x1,x2,x3]]
+                #        ary = ar_i_0
+                #        arx = ar_i_1
+                if(len_ar_i_1 == 3): #OC21022019
+                    if(len_ar_i_0 == 3): 
+                        if(ar_i_1[2] == 3): #assuming [[y1,y2,y3],[x_min_i,x_max_i,nx_i]]
+                            ary = ar_i_0
+                            arx = np.linspace(ar_i_1[0], ar_i_1[1], ar_i_1[2])
+                        else: #assuming [[y1,y2,y3],[x1,x2,x3]]
+                            ary = ar_i_0
+                            arx = ar_i_1
+                    elif(len_ar_i_0 == ar_i_1[2]): #assuming [[y1,y2,y3,y4,...],[x_min_i,x_max_i,nx_i]]
+                        ary = ar_i_0
+                        arx = np.linspace(ar_i_1[0], ar_i_1[1], ar_i_1[2])
+                    
+                elif((len_ar_i_1 == 2) and (len_ar_i_0 == 2)): #assuming [[x1,y1],[x2,y2]]
+                    arx = [ar_i_0[0],ar_i_1[0]]
+                    ary = [ar_i_0[1],ar_i_1[1]]
+
+                elif((len_ar_i_1 != 1) and (len_ar_i_1 == len_ar_i_1)): #assuming [[y1,y2,...],[x1,x2,...]]
+                    ary = ar_i_0
+                    arx = ar_i_1
+
+            elif(len_ar_i > 2): #assuming [[x1_i,y1_i],[x2_i,y2_i],...]
+                arx = [0]*len_ar_i
+                ary = [0]*len_ar_i
+                for j in range(len_ar_i):
+                    ar_ij = ar_i[j]
+                    arx[j] = ar_ij[0]
+                    ary[j] = ar_ij[1]
+                    
+            if((curStyle is None) and (curLegend is None)): ax.plot(arx, ary)
+            elif((curStyle is not None) and (curLegend is None)): ax.plot(arx, ary, curStyle)
+            elif((curStyle is None) and (curLegend is not None)): ax.plot(arx, ary, label=curLegend)
+            elif((curStyle is not None) and (curLegend is not None)): ax.plot(arx, ary, curStyle, label=curLegend)
+
+            if(curLegend is not None): legendWasUsed = True
+
+        if(legendWasUsed): ax.legend()
+        ax.grid()
         ax.set_xlabel(labels[0])
         ax.set_ylabel(labels[1])
-        if(len(labels) > 2):
-            ax.set_title(labels[2])
+        if(len(labels) > 2): ax.set_title(labels[2])
+
+    def _plot_2D(self, ar2d, x_range, y_range, labels, fig, typ=111):
+
+        #totLen = int(x_range[2]*y_range[2])
+        #lenAr2d = len(ar2d)
+        #if lenAr2d > totLen: ar2d = np.array(ar2d[0:totLen])
+        #elif lenAr2d < totLen:
+        #    auxAr = array('d', [0]*lenAr2d)
+        #    for i in range(lenAr2d): auxAr[i] = ar2d[i]
+        #    ar2d = np.array(auxAr)
+
+        #if isinstance(ar2d,(list,array)): ar2d = np.array(ar2d)
+        #ar2d = ar2d.reshape(y_range[2],x_range[2])
+
+        isDataAr = False  #OC30052020
+        if isinstance(ar2d, (list, array)):
+            isFlat = True
+            if isinstance(ar2d[0], (list, array)): isFlat = False
+
+            if((x_range is None) or (y_range is None)):
+                if isFlat: raise Exception('Mesh / grid description for 2D plot is not provided')
+                if x_range is None:
+                    nx = len(ar2d[0])
+                    x_range = [0, nx - 1, nx]
+                if y_range is None:
+                    ny = len(ar2d)
+                    y_range = [0, ny - 1, ny]
+
+            if isFlat:
+                totLen = int(x_range[2]*y_range[2])
+                lenAr2d = len(ar2d)
+                if lenAr2d > totLen: ar2d = np.array(ar2d[0:totLen])
+                elif lenAr2d < totLen:
+                    auxAr = array('d', [0]*lenAr2d)
+                    for i in range(lenAr2d): auxAr[i] = ar2d[i]
+                    ar2d = np.array(auxAr)
+            
+            ar2d = np.array(ar2d)
+            ar2d = ar2d.reshape(y_range[2], x_range[2])
+            isDataAr = True
+        else: #Perhaps this is not necessary? Image will be displayed in standard way then (with pixel row number starting from top)
+            nx = 0; ny = 0
+            if(x_range is None):
+                nx, ny = ar2d.size
+                x_range = [0, nx - 1, nx]
+            if(y_range is None):
+                if(ny == 0): nx, ny = ar2d.size
+                y_range = [0, ny - 1, ny]
+
+        ax = fig.add_subplot(typ)
+           
+        #x = np.linspace(x_range[0],x_range[1],x_range[2])
+        #y = np.linspace(y_range[0],y_range[1],y_range[2])
+        x = np.linspace(x_range[0],x_range[1],x_range[2]) if x_range is not None else None #OC30052020
+        y = np.linspace(y_range[0],y_range[1],y_range[2]) if y_range is not None else None 
+        
+        #ax.pcolormesh(x,y,ar2d,cmap=self._pl.cm.Greys_r) #OC150814
+        if isDataAr: ax.pcolormesh(x, y, ar2d, cmap=self._pl.cm.Greys_r) #OC30052020
+        else: ax.imshow(ar2d, cmap=self._pl.cm.Greys_r) #OC30052020 (assuming PIL.Image)
+        
+        #ax.set_xlim(x[0],x[-1])
+        #ax.set_ylim(y[0],y[-1])
+        if x is not None: ax.set_xlim(x[0],x[-1]) #OC30052020
+        if y is not None: ax.set_ylim(y[0],y[-1])
+        
+        ax.set_xlabel(labels[0])
+        ax.set_ylabel(labels[1])
+        if(len(labels) > 2): ax.set_title(labels[2])
 
     def __mode_T(self, data, allrange, _ar_labels, _ar_units, _ec=0, _xc=0, _yc=0):
         #allrange, units = _rescale_range(allrange)
         #allrange, units = _rescale_range(allrange, _ar_units, _ec, _xc, _yc)
-        allrange, units = rescale_range(allrange, _ar_units, _ec, _xc, _yc)
+        allrange, units = uti_plot_com.rescale_range(allrange, _ar_units, _ec, _xc, _yc)
 
         #e0, e1, ne, x0, x1, nx, y0, y1, ny = allrange
         e0, e1, ne, x0, x1, nx, y0, y1, ny, ec, xc, yc = allrange
@@ -303,7 +431,7 @@ class Backend(object):
     def __mode_V(self, data, allrange, _ar_labels, _ar_units):
         #allrange, units = _rescale_range(allrange)
         #allrange, units = _rescale_range(allrange, _ar_units)
-        allrange, units = rescale_range(allrange, _ar_units)
+        allrange, units = uti_plot_com.rescale_range(allrange, _ar_units)
 
         #e0, e1, ne, x0, x1, nx, y0, y1, ny = allrange
         e0, e1, ne, x0, x1, nx, y0, y1, ny, ec, xc, yc = allrange
@@ -317,7 +445,7 @@ class Backend(object):
     def __mode_H(self, data, allrange, _ar_labels, _ar_units):
         #allrange, units = _rescale_range(allrange)
         #allrange, units = _rescale_range(allrange, _ar_units)
-        allrange, units = rescale_range(allrange, _ar_units)
+        allrange, units = uti_plot_com.rescale_range(allrange, _ar_units)
 
         #e0, e1, ne, x0, x1, nx, y0, y1, ny = allrange
         e0, e1, ne, x0, x1, nx, y0, y1, ny, ec, xc, yc = allrange
@@ -331,7 +459,7 @@ class Backend(object):
     def __mode_E(self, data, allrange, _ar_labels, _ar_units):
         #allrange, units = _rescale_range(allrange)
         #allrange, units = _rescale_range(allrange, _ar_units)
-        allrange, units = rescale_range(allrange, _ar_units)
+        allrange, units = uti_plot_com.rescale_range(allrange, _ar_units)
 
         e0, e1, ne, x0, x1, nx, y0, y1, ny, ec, xc, yc = allrange
         range_e = e0, e1, ne
@@ -346,7 +474,7 @@ class Backend(object):
         #Could be moved to uti_plot_com.py (since there is not Matplotlib-specific content)
         #allrange, units = _rescale_range(allrange)
         #allrange, units = _rescale_range(allrange, _ar_units, 0, _xc, _yc)
-        allrange, units = rescale_range(allrange, _ar_units, 0, _xc, _yc)
+        allrange, units = uti_plot_com.rescale_range(allrange, _ar_units, 0, _xc, _yc)
 
         e0, e1, ne, x0, x1, nx, y0, y1, ny, ec, xc, yc = allrange
         range_x = x0, x1, nx
@@ -393,7 +521,7 @@ class Backend(object):
     ##    xx = x0
     ##    for ix in range(nx):
     ##        #arCutX[ix] = _interp_2d(xx, yc, x0, xStep, nx, y0, yStep, ny, data, inperpOrd, 1, 0)
-    ##        arCutX[ix] = interp_2d(xx, yc, x0, xStep, nx, y0, yStep, ny, data, inperpOrd, 1, 0)
+    ##        arCutX[ix] = uti_math.interp_2d(xx, yc, x0, xStep, nx, y0, yStep, ny, data, inperpOrd, 1, 0)
     ##        xx += xStep
     ##    if _graphs_joined: _plot_1D(arCutX, range_x, label1H, fig, 132)
     ##    else: uti_plot1d(arCutX, range_x, label1H)
@@ -403,7 +531,7 @@ class Backend(object):
     ##    yy = y0
     ##    for iy in range(ny):
     ##        #arCutY[iy] = _interp_2d(xc, yy, x0, xStep, nx, y0, yStep, ny, data, inperpOrd, 1, 0)
-    ##        arCutY[iy] = interp_2d(xc, yy, x0, xStep, nx, y0, yStep, ny, data, inperpOrd, 1, 0)
+    ##        arCutY[iy] = uti_math.interp_2d(xc, yy, x0, xStep, nx, y0, yStep, ny, data, inperpOrd, 1, 0)
     ##        yy += yStep
     ##    if _graphs_joined: _plot_1D(arCutY, range_y, label1V, fig, 133)
     ##    else: uti_plot1d(arCutY, range_y, label1V)
@@ -610,9 +738,12 @@ class Backend(object):
         import matplotlib.pyplot
         pl = matplotlib.pyplot
         try:
-            pl.figure(figsize=(0,0))
+            pl.figure(figsize=(1,1)) #OC08032020 (the line below throws exception with ~recent matplotlib)
+            #pl.figure(figsize=(0,0))
             pl.close('all')
         except:
+        #except Exception as e:
+            #print(str(e))
             old = backend
             (backend, fname_format) = self._default_file_backend(fname_format)
             pl.switch_backend(backend)

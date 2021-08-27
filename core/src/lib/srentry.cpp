@@ -40,7 +40,8 @@
 #ifndef __IGOR_PRO__
 #ifdef _WINDOWS
 int SpinProcess() { return 0;}
-Handle NewHandle(long size)
+//Handle NewHandle(long size)
+Handle WMNewHandle(long long size) //OC13112019 (port to XOP8 on MAC)
 {//to check
 	if(size <= 0) return 0;
 	char** aHandle = new char*();
@@ -101,7 +102,7 @@ void UtiWarnCheck()
 
 EXP int CALL srUtiVerNo(char* VerNoStr)
 {//to modify at each new release!
-	char CurVerStr[] = "3.965"; //"3.87";
+	char CurVerStr[] = "3.97"; //"3.965"; //"3.87";
 
 	strcpy(VerNoStr, CurVerStr);
 	return 0;
@@ -390,6 +391,7 @@ EXP int CALL srMagFldConstSet(int* i, double BH, double BV)
 //-------------------------------------------------------------------------
 
 EXP int CALL srMagFldTrUnifSet(int* i, double sStart, double sStep, int np, double* pBh, double* pBv)
+//EXP int CALL srMagFldTrUnifSet(int* i, double sStart, double sStep, long long np, double* pBh, double* pBv) //OC26042019
 {
 	try 
 	{ 
@@ -403,6 +405,7 @@ EXP int CALL srMagFldTrUnifSet(int* i, double sStart, double sStep, int np, doub
 //-------------------------------------------------------------------------
 
 EXP int CALL srMagFld3dSet(int* i, double xStart, double xStep, int nx, double yStart, double yStep, int ny, double zStart, double zStep, int nz, double* pBx, double* pBy, double* pBz)
+//EXP int CALL srMagFld3dSet(int* i, double xStart, double xStep, long long nx, double yStart, double yStep, long long ny, double zStart, double zStep, long long nz, double* pBx, double* pBy, double* pBz)
 {
 	try 
 	{
@@ -444,6 +447,7 @@ EXP int CALL srGausBeamSet(int* i, double SpecFlux, int Polar, double sigX, int 
 //-------------------------------------------------------------------------
 
 EXP int CALL srWfrSmpSet(int* i, double s, double hSt, double hFi, int hN, double vSt, double vFi, int vN, double* pSurfData, double eSt, double eFi, int eN, char* PhotEnUnit, double tSt, double tFi, int tN, int presT, double* horOrtObsPlane, double* inNormObsPlane)
+//EXP int CALL srWfrSmpSet(int* i, double s, double hSt, double hFi, long long hN, double vSt, double vFi, long long vN, double* pSurfData, double eSt, double eFi, long long eN, char* PhotEnUnit, double tSt, double tFi, long long tN, int presT, double* horOrtObsPlane, double* inNormObsPlane) //OC26042019
 {
 	try 
 	{ 

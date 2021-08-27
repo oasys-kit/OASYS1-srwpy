@@ -31,8 +31,8 @@ public:
 	/** Computes the mofified Bessel Function Kn(x)
 	@see Method from V.O. Kostrum, NIM 172 (1980) p371-374
     ni=0 : computes k= Kn(x)
-    ni=1 : computes k= ¤ Kn(x) dx from x to infinity
-    ni=p : computes k= ¤¤..¤ Kn(x) dx from x to infinity p times
+    ni=1 : computes k= Int Kn(x) dx from x to infinity
+    ni=p : computes k= Int...Int Kn(x) dx from x to infinity p times
     */
 	static int Kmu(int ni, double mu, double x, double& f)
 	{
@@ -74,7 +74,8 @@ public:
 
 	/** Computes x^2*Kn(x)^2
     */
-	static double AuxFuncK2d3e2_xe2(double x)
+	static double AuxFuncK2d3e2_xe2(double x, void* pv=0) //OC20112018
+	//static double AuxFuncK2d3e2_xe2(double x)
 	{
 		double KmuVal = 0;
 		Kmu(0, 2./3., x, KmuVal);
@@ -83,14 +84,15 @@ public:
 
 	/** Computes x^2*Kn(x)^2
     */
-	static double AuxFuncIntK5d3_x(double x)
+	static double AuxFuncIntK5d3_x(double x, void* pv=0) //OC20112018
+	//static double AuxFuncIntK5d3_x(double x)
 	{
 		double KmuVal = 0;
 		Kmu(1, 5./3., x, KmuVal);
 		return x*KmuVal;
 	}
 
-	/** Computes a definite integral ¤ x^2*Kn(x)^2 dx
+	/** Computes a definite Int x^2*Kn(x)^2 dx
     */
 	static double Int_xe2_K2d3e2(double x1, double x2, double RelPrec)
 	{
@@ -105,7 +107,7 @@ public:
         return CGenMathMeth::Integ1D_FuncWithEdgeDer(&AuxFuncK2d3e2_xe2, x1, x2, dK2d3e2_xe2dx1, dK2d3e2_xe2dx2, RelPrec);
 	}
 
-	/** Computes a definite integral ¤x¤K5/3(x1)dx1dx
+	/** Computes a definite Int...Int K5/3(x1)dx1dx
     */
 	static double Int_x_IntK5d3(double x1, double x2, double RelPrec)
 	{

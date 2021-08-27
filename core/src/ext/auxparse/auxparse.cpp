@@ -21,7 +21,7 @@ void CAuxParse::StringSplitSimple(const char* c_strTot, int maxNumSymb, char cSe
 	int lenStrTot = (int)strlen(c_strTot);
 	if(lenStrTot == 0) return;
 	if(lenStrTot > maxNumSymb) lenStrTot = maxNumSymb;
-	
+
 	char *sBufStrTot = new char[lenStrTot + 1];
 	char *sBuf = new char[lenStrTot + 1];
 	strncpy(sBufStrTot, c_strTot, lenStrTot);
@@ -458,7 +458,8 @@ void CAuxParse::StringVect2ArrNoAlloc(vector<string>& vs, char** as, int& numStr
 			//*p_as = new char[curSize + 1];
 			//const char* curStr = it->c_str();
 			const char* curStr = curString.c_str();
-			int lenCurStr = (int)strlen(curStr);
+			//int lenCurStr = (int)strlen(curStr);
+			size_t lenCurStr = strlen(curStr); //OC14052020
 			strncpy(as[i], curStr, lenCurStr);
 			*(as[i] + lenCurStr) = '\0';
 		}

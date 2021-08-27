@@ -55,6 +55,8 @@ struct SRWLStructWaveFront;
 typedef struct SRWLStructWaveFront SRWLWfr;
 struct SRWLStructParticleBeam;
 typedef struct SRWLStructParticleBeam SRWLPartBeam;
+struct SRWLStructRadMesh;
+typedef struct SRWLStructRadMesh SRWLRadMesh;
 
 //*************************************************************************
 
@@ -71,6 +73,7 @@ public:
 	int hStateRadX, hStateRadZ;
 	double eStep, eStart, xStep, xStart, zStep, zStart;
 	long ne, nx, nz;
+	//long long ne, nx, nz; //OC26042019
 
 	double xStartTr, zStartTr;
 	bool UseStartTrToShiftAtChangingRepresToCoord;
@@ -106,7 +109,8 @@ public:
 	double wfrReffX, wfrReffZ; //effective wavefront radii (to be used e.g. at resize) //OC150914
 
 	char ElectronBeamEmulated; // 0 by def.
-	DOUBLE *pElecBeam;
+	//DOUBLE *pElecBeam;
+	double *pElecBeam; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	waveHndl wElecBeam; // Can be this or Trajectory
 	int hStateElecBeam;
 
@@ -114,7 +118,8 @@ public:
 	int hStateTrj;
 
 	bool PropMatrWasEmulated;
-	DOUBLE *p4x4PropMatr;
+	//DOUBLE *p4x4PropMatr;
+	double *p4x4PropMatr; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	waveHndl w4x4PropMatr;
 	int hState4x4PropMatr;
 
@@ -126,7 +131,8 @@ public:
 	bool MomWereCalcNum;
 
 	bool WfrAuxDataWasEmulated;
-	DOUBLE *pWfrAuxData;
+	//DOUBLE *pWfrAuxData;
+	double *pWfrAuxData; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	waveHndl wWfrAuxData;
 	int hStateWfrAuxData;
 
@@ -194,6 +200,7 @@ public:
 	void ProcessNxNzForPropag(srTWfrSmp* pWfrSmp, double NxNzOversamplingFactor);
 	//void ProcessNxNzForPropag(double NxNzOversamplingFactor, long& nx, long& nz);
     void CheckNxNzForSR(srTWfrSmp* pWfrSmp, double NxNzOversamplingFactor);
+	//void CheckNxNzForSR(double NxNzOversamplingFactor, long long& _nx, long long& _nz); //OC26042019
 	void CheckNxNzForSR(double NxNzOversamplingFactor, long& _nx, long& _nz);
 
 	void AllocElectronBeam();
@@ -204,19 +211,23 @@ public:
 	void CopyBaseRadData(float* pInBaseRadX, float* pInBaseRadZ);
 	//void CopyStatMomData(float* pInMomX, float* pInMomZ);
 	void CopyStatMomData(double* pInMomX, double* pInMomZ); //OC130311
-    void CopyElectronBeamData(DOUBLE* pInElecBeam);
-    void Copy4x4PropMatrData(DOUBLE* pIn4x4PropMatr);
-    void CopyWfrAuxData(DOUBLE* pInWfrAuxData);
+    //void CopyElectronBeamData(DOUBLE* pInElecBeam);
+    //void Copy4x4PropMatrData(DOUBLE* pIn4x4PropMatr);
+    //void CopyWfrAuxData(DOUBLE* pInWfrAuxData);
+    void CopyElectronBeamData(double* pInElecBeam); //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+    void Copy4x4PropMatrData(double* pIn4x4PropMatr);
+    void CopyWfrAuxData(double* pInWfrAuxData);
 
-	void InSRWRadPtrs(srTSRWRadInData*, bool DataShouldBeCopied = false);
+	void InSRWRadPtrs(srTSRWRadInData*, bool DataShouldBeCopied=false);
 	void InSRWRadPtrs(SRWLWfr&);
 	void OutSRWRadPtrs(srTSRWRadInData*);
 	void OutSRWRadPtrs(SRWLWfr&);
 
 	//srTSRWRadInData* CreateCorrespSRWRadInData();
 	//int ModifyWfrNeNxNz(char PolarizComp = 0);
-	int ModifyWfrNeNxNz(char PolarizComp = 0, bool backupIsReq = false); //OC131115
+	int ModifyWfrNeNxNz(char PolarizComp = 0, bool backupIsReq=false); //OC131115
 	int DeleteWfrBackupData(char PolarizComp = 0); //OC151115
+	int AllocExtIntArray(char type, char dep, char*& pcAlloc); //OC18082018
 
 	int GetWfrStructNames(srTSRWRadStructWaveNames& RadStructNames);
 	int CreateNewWfrStruct(srTSRWRadStructWaveNames& Names);
@@ -248,6 +259,12 @@ public:
 
 	//void EstimWfrRadCen(double& resR, double& resCen, char cutX_or_Z, char fldX_or_Z=0, double relArgRange=0.2, double relArgCenOther=0.5);
 	bool CheckIfQuadTermTreatIsBenefit(char cutX_or_Z, char fldX_or_Z=0);
+	void GetIntMesh(char dep, SRWLRadMesh& mesh); //OC23082018
+
+	//void UpdateMeshParams(SRWLRadMesh& mesh); //OC05022020
+	void Resize(SRWLRadMesh& mesh, double* arPar); //OC26012020
+	void ResizeCoreXZ(SRWLRadMesh& oldMesh, float* pOldRadX, float* pOldRadZ, SRWLRadMesh& newMesh, float* pNewRadX, float* pNewRadZ, double* arPar); //OC31012020
+	void ResizeCoreE(SRWLRadMesh& oldMesh, float* pOldRadX, float* pOldRadZ, SRWLRadMesh& newMesh, float* pNewRadX, float* pNewRadZ, double* arPar); //OC02022020
 
 	void SetupSrwWfrAuxData()
 	{
@@ -333,26 +350,32 @@ public:
 		double Zc = *(pElecBeam + 4);
 		double Zdc = *(pElecBeam + 5);
 
-		DOUBLE *pMStr[4];
+		//DOUBLE *pMStr[4];
+		double *pMStr[4]; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 		for(int i=0; i<4; i++)
 		{
 			int i4 = i << 2;
 			pMStr[i] = p4x4PropMatr + i4;
 		}
 
-		DOUBLE *pStr0 = pMStr[0], *pStr2 = pMStr[2];
+		//DOUBLE *pStr0 = pMStr[0], *pStr2 = pMStr[2];
+		double *pStr0 = pMStr[0], *pStr2 = pMStr[2]; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 		xc = pStr0[0]*Xc + pStr0[1]*Xdc + pStr0[2]*Zc + pStr0[3]*Zdc;
 		zc = pStr2[0]*Xc + pStr2[1]*Xdc + pStr2[2]*Zc + pStr2[3]*Zdc;
 	}
 
-	DOUBLE* ElemPtrOf4x4PropMatr(int i, int j)
+	//DOUBLE* ElemPtrOf4x4PropMatr(int i, int j)
+	double* ElemPtrOf4x4PropMatr(int i, int j) //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	{
 		return p4x4PropMatr + j*4 + i;
 	}
-	void Setup4x4PropMatrPtrs(DOUBLE** PropMatrPtrs)
+	//void Setup4x4PropMatrPtrs(DOUBLE** PropMatrPtrs)
+	void Setup4x4PropMatrPtrs(double** PropMatrPtrs) //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 	{
-		DOUBLE** tPropMatrPtrs = PropMatrPtrs;
-		DOUBLE* t4x4PropMatr = p4x4PropMatr;
+		//DOUBLE** tPropMatrPtrs = PropMatrPtrs;
+		//DOUBLE* t4x4PropMatr = p4x4PropMatr;
+		double** tPropMatrPtrs = PropMatrPtrs; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
+		double* t4x4PropMatr = p4x4PropMatr;
 		for(int i=0; i<16; i++)
 		{
 			*(tPropMatrPtrs++) = t4x4PropMatr++;
@@ -363,7 +386,8 @@ public:
 		if(p4x4PropMatr == 0) return;
 
 		int i;
-		DOUBLE* t4x4PropMatr = p4x4PropMatr;
+		//DOUBLE* t4x4PropMatr = p4x4PropMatr;
+		double* t4x4PropMatr = p4x4PropMatr; //OC26112019 (related to SRW port to IGOR XOP8 on Mac)
 		for(i=0; i<16; i++) *(t4x4PropMatr++) = 0.;
 		t4x4PropMatr = p4x4PropMatr;
 		for(i=0; i<4; i++)
@@ -699,15 +723,20 @@ public:
 		}
 	}
 
-	void SetupRadXorZSectFromSliceConstEorT(float* pInEx, float* pInEz, long _nx, long _nz, char vsX_or_vsZ, long iSect, float* pOutEx, float* pOutEz)
+	void SetupRadXorZSectFromSliceConstEorT(float* pInEx, float* pInEz, long long _nx, long long _nz, char vsX_or_vsZ, long long iSect, float* pOutEx, float* pOutEz) //OC26042019
+	//void SetupRadXorZSectFromSliceConstEorT(float* pInEx, float* pInEz, long _nx, long _nz, char vsX_or_vsZ, long iSect, float* pOutEx, float* pOutEz)
 	{
-		long Per = (vsX_or_vsZ == 'x')? 2 : (_nx << 1);
+		//long Per = (vsX_or_vsZ == 'x')? 2 : (_nx << 1);
+		long long Per = (vsX_or_vsZ == 'x')? 2 : (_nx << 1); //OC26042019
 		float *tOutEx = pOutEx, *tOutEz = pOutEz;
-		long StartOffset = (vsX_or_vsZ == 'x')? iSect*(_nx << 1) : (iSect << 1);
+		//long StartOffset = (vsX_or_vsZ == 'x')? iSect*(_nx << 1) : (iSect << 1);
+		long long StartOffset = (vsX_or_vsZ == 'x')? iSect*(_nx << 1) : (iSect << 1); //OC26042019
 		float *tEx = pInEx + StartOffset, *tEz = pInEz + StartOffset;
-		long nPt = (vsX_or_vsZ == 'x')? _nx : _nz;
+		//long nPt = (vsX_or_vsZ == 'x')? _nx : _nz;
+		long long nPt = (vsX_or_vsZ == 'x')? _nx : _nz; //OC26042019
 
-		for(int i=0; i<nPt; i++)
+		for(long long i=0; i<nPt; i++) //OC26042019
+		//for(int i=0; i<nPt; i++)
 		{
 			*(tOutEx++) = *tEx; *(tOutEx++) = *(tEx + 1);
 			*(tOutEz++) = *tEz; *(tOutEz++) = *(tEz + 1);
@@ -767,7 +796,8 @@ public:
 		}
 	}
 
-	void TreatQuadPhaseTermTerm(char AddOrRem, char PolComp=0, int ieOnly=-1)
+	void TreatQuadPhaseTerm(char AddOrRem, char PolComp=0, int ieOnly=-1) //OC17122019
+	//void TreatQuadPhaseTermTerm(char AddOrRem, char PolComp=0, int ieOnly=-1)
 	{//same as srTGenOptElem::TreatStronglyOscillatingTerm(srTSRWRadStructAccessData& RadAccessData, char AddOrRem, char PolComp, int ieOnly)
 		//Later treat X and Z coordinates separately here!!!
 
@@ -775,10 +805,14 @@ public:
 		char TreatPolCompZ = ((PolComp == 0) || (PolComp == 'z')) && (pBaseRadZ != 0);
 
 		const double Pi = 3.14159265358979;
-		double Const = Pi*1.E+06/1.239854; // Assumes m and eV
+		//double Const = Pi*1.E+06/1.239854; // Assumes m and eV
+		const double Const = Pi*1.E+06/1.23984186; // Assumes m and eV
 
-		double ConstRx = (Pres == 0)? Const/RobsX : -Const*RobsX;
-		double ConstRz = (Pres == 0)? Const/RobsZ : -Const*RobsZ;
+		//double ConstRx = (Pres == 0)? Const/RobsX : -Const*RobsX;
+		//double ConstRz = (Pres == 0)? Const/RobsZ : -Const*RobsZ;
+		double ConstRx=0, ConstRz=0; //OC17122019
+		if(WfrQuadTermCanBeTreatedAtResizeX) ConstRx = (Pres == 0)? Const/RobsX : -Const*RobsX; //OC17122019
+		if(WfrQuadTermCanBeTreatedAtResizeZ) ConstRz = (Pres == 0)? Const/RobsZ : -Const*RobsZ;
 
 		if(AddOrRem == 'r') { ConstRx = -ConstRx; ConstRz = -ConstRz;}
 
@@ -796,13 +830,15 @@ public:
 		long long PerX = ne << 1;
 		long long PerZ = PerX*nx;
 
-		int ieStart=0, ieBefEnd=ne;
+		//int ieStart=0, ieBefEnd=ne;
+		long long ieStart=0, ieBefEnd=ne; //OC26042019
 		if((ieOnly >= 0) && (ieOnly < ne))
 		{
 			ieStart = ieOnly; ieBefEnd = ieOnly + 1;
 		}
 
-		for(int ie=ieStart; ie<ieBefEnd; ie++)
+		for(long long ie=ieStart; ie<ieBefEnd; ie++) //OC26042019
+		//for(int ie=ieStart; ie<ieBefEnd; ie++)
 		{
 			if(PresT == 1)
 			{
@@ -977,6 +1013,19 @@ public:
 	{
 		if((pBaseRadX == 0) && (pBaseRadZ == 0)) return false;
 		else return true;
+	}
+
+	long long GetIntNumPts(char dep) //OC18082018
+	{//To add dependence on type of intensity when/if it is extended to mutual intensity and related charact.
+		long long resNp = 0;
+		if(dep == 0) resNp = ne;
+		else if(dep == 1) resNp = nx;
+		else if(dep == 2) resNp = nz;
+		else if(dep == 3) resNp = ((long long)nx)*((long long)nz);
+		else if(dep == 4) resNp = ((long long)ne)*((long long)nx);
+		else if(dep == 5) resNp = ((long long)ne)*((long long)nz);
+		else if(dep == 6) resNp = ((long long)ne)*((long long)nx)*((long long)nz);
+		return resNp;
 	}
 
 	void DeleteElecFieldArrays()
