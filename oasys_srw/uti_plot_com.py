@@ -8,8 +8,8 @@ import traceback
 #import sys
 #import numpy as np
 
-import uti_math
-import uti_io
+import oasys_srw.uti_math as uti_math
+import oasys_srw.uti_io as uti_io
 
 #****************************************************************************
 def _multicolumn_file_load(fname): #MR31102017

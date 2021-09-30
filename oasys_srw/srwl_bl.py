@@ -9,12 +9,12 @@
 #############################################################################
 
 from __future__ import print_function #Python 2.7 compatibility
-from srwlib import *
-from srwl_uti_mag import *
-from srwl_uti_und import *
-from uti_plot import *
-import uti_math
-import uti_io
+from oasys_srw.srwlib import *
+from oasys_srw.srwl_uti_mag import *
+from oasys_srw.srwl_uti_und import *
+from oasys_srw.uti_plot import *
+import oasys_srw.uti_math as uti_math
+import oasys_srw.uti_io as uti_io
 #import optparse #MR081032016 #Consider placing import argparse here
 import time
 import re #OC23052020
@@ -2334,7 +2334,7 @@ class SRWLBeamline(object):
         #---perform optimization of beamline and possibly source parameters (this should be processed before any other things)
         if(_v.om): #since the optimization modifies params in _v and calls calc_all, it goes first
             try: #16122018
-                import uti_math_opt
+                import oasys_srw.uti_math_opt as uti_math_opt
                 self.uti_math_opt = uti_math_opt
                 
             except:

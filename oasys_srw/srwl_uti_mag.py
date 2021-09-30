@@ -2,7 +2,7 @@
 # SRWLib for Python: Magnet Utilities v 0.02
 #############################################################################
 
-from srwlib import *
+from oasys_srw.srwlib import *
 #from copy import *
 
 #****************************************************************************

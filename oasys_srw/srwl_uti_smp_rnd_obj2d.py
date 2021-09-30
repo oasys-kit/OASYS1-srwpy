@@ -891,7 +891,7 @@ def get_dist(_min_value, _max_value, _dist = 1): #RAC30032020
     # load package srwl_uti_dist
     try:
         sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-        from uti_math import get_dist_uni, get_dist_norm, get_dist_schultz
+        from oasys_srw.uti_math import get_dist_uni, get_dist_norm, get_dist_schultz
     except:
         print('uti_math functions: get_uni_rand, get_norm_dist, get_schulz_dist failed to load.')
 

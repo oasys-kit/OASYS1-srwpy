@@ -12,8 +12,8 @@ import sys
 import time
 from array import array
 
-import srwlib
-import uti_io
+import oasys_srw.srwlib as srwlib
+import oasys_srw.uti_io as uti_io
 
 
 # ********************** The class for Samples:
@@ -553,7 +553,7 @@ def srwl_opt_setup_smp_rnd_obj2d( #RAC06052020
     ### Load package srwl_uti_smp_rand_obj2d.py
     try:
         #sys.path.append(os.path.join(os.path.dirname(__file__), '..')) #OC24052020 (commented-out)
-        from srwl_uti_smp_rnd_obj2d import get_rnd_2D, on_pxy, get_r1j, uni_rnd_seed
+        from oasys_srw.srwl_uti_smp_rnd_obj2d import get_rnd_2D, on_pxy, get_r1j, uni_rnd_seed
     except:
         raise Exception('srwl_uti_smp_rnd_obj2d module failed to load. Please make sure that skimage module is installed. It can be installed with "pip install scikit-image" ') #OC24052020
         #print('srwl_uti_smp_rnd_obj2d.py functions get_rnd_2D, on_pxy, get_r1j, and uni_rnd_seed failed to load.')

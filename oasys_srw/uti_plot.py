@@ -9,7 +9,7 @@ SRW program.
 
 Usage:
 
-    import uti_plot as up
+    import oasys_srw.uti_plot as up
 
     up.uti_plot_init()
     uti_plot1d(...)
@@ -29,7 +29,7 @@ Modules:
 
 .. moduleauthor:: Rob Nagler <nagler@radiasoft.net>
 """
-import uti_plot_com
+import oasys_srw.uti_plot_com as uti_plot_com
 import sys
 import traceback
 
@@ -53,7 +53,7 @@ def uti_plot_init(backend=DEFAULT_BACKEND, fname_format=None):
     global _backend
     if backend is not None:
         try:
-            import uti_plot_matplotlib
+            import oasys_srw.uti_plot_matplotlib as uti_plot_matplotlib
             _backend = uti_plot_matplotlib.Backend(backend, fname_format)
             return
         except:

@@ -14,7 +14,7 @@ import random
 import sys
 import os
 import traceback
-import oasys_srw.uti_math
+import oasys_srw.uti_math as uti_math
 import errno
 import tempfile
 import shutil
@@ -23,7 +23,7 @@ import time
 from oasys_srw.srwl_uti_cryst import *
 
 #try:
-#    from uti_plot import * #universal simple plotting module distributed together with SRWLib
+#    from oasys_srw.uti_plot import * #universal simple plotting module distributed together with SRWLib
 #except:
 #    #excInf = sys.exc_info()
 #    #print(excInf[1]) #printing exception value
