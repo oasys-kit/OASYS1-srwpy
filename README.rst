@@ -23,7 +23,6 @@ Based on:
 Licensing and documentation:
 
 * Free software: 3-clause BSD license
-* Documentation: (COMING SOON!) https://srwpy.github.io/srwpy.
 
 Compilation in Windows
 ----------------------
@@ -35,7 +34,20 @@ Compilation in Windows
 * python -m twine upload dist\*
 
 
-Features
---------
+Notes on windows compilation
+----------------------------
 
-* TODO
+* The libfftw* libraries [*.lib at the main level and core/vc/*.lib] are pre-compiled (not done with setup.py)
+* the main compilation is in core/vs/make.bat that compiles a VS project SRWLIB.vcxproj (using msbuild). This is called by setup.py
+* then run python setup.py bdist_wheel with the wanted python (from miniconda https://repo.anaconda.com/miniconda/ or the ones from https://www.python.org/downloads/)
+* the libfftw*.dll are placed by 'pip install' at the main level of python dir (...\miniconda3\*.dll or ...\Python3.7\*.dll) that must be in %PATH%
+* the branch visualstudio2022 contains SRWLIB.vcxproj for Visual Studio 2022
+* Windows wheels for python 3.8 and 3.9 are created by @srio using python from python.org and VS 2022. The 3.7 version is created by @lrebuffi usinh VS2019. 
+* Wheels directory is https://pypi.org/project/oasys-srwpy/#files
+
+Note that:
+----------
+* git dir is OASYS1-srwpy: https://github.com/oasys-kit/OASYS1-srwpy
+* pip install oasys-srwpy: https://pypi.org/project/oasys-srwpy
+* import in python with: "from oasys_srw.srwlib import *" and maybe also "from oasys_srw.uti_plot import *"
+
