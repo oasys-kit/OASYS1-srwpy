@@ -49,5 +49,5 @@ Note that:
 ----------
 * git dir is OASYS1-srwpy: https://github.com/oasys-kit/OASYS1-srwpy
 * pip install oasys-srwpy: https://pypi.org/project/oasys-srwpy
-* import in python with: "from oasys_srw.srwlib import *" and maybe also "from oasys_srw.uti_plot import *"
+* import in python with: "from oasys_srw.srwlib import * " and maybe also "from oasys_srw.uti_plot import * "
 
