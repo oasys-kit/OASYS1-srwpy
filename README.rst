@@ -29,7 +29,9 @@ Compilation in Windows
 * install OASYS
 * install Visual Studio 2019 with c++ tools
 * Start the Visual Studio Command Prompt (check then "where msbuild")
-* Activate miniconda "c:\\miniconda3\\Scripts\\activate"
+* Set the wanted python: 
+   - extend PATH with python (set PATH=c:\Python37\;c:\Python37\Lib;c:\Python37\libs;%PATH%); or
+   - Activate miniconda "c:\\miniconda3\\Scripts\\activate"
 * python setup.py bdist_wheel
 * python -m twine upload dist\*
 
