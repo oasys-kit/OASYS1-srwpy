@@ -28,7 +28,7 @@ Compilation in Windows
 ----------------------
 * install OASYS
 * install Visual Studio 2019 with c++ tools
-* Start the Visual Studio Command Prompt (check then "where msbuild")
+* Start the Visual Studio Command Prompt (check then "where msbuild") (or add VS to your path, typically "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\BuildTools\\VC\\Auxiliary\\Build\\vcvarsall.bat"  amd64 -vcvars_ver=14.16)
 * Set the wanted python: 
    - extend PATH with python (set PATH=c:\\Python37\;c:\\Python37\\Lib;c:\\Python37\\libs;%PATH%); or
    - Activate miniconda "c:\\miniconda3\\Scripts\\activate"
