@@ -35,7 +35,7 @@ with open(os.path.join(here, 'requirements.txt')) as requirements_file:
                     if not line.startswith('#')]
 
 # Prepare the extension:
-srwlpy_kwargs = {'include_dirs': ['core/src/lib'],
+srwlpy_kwargs = {'include_dirs': ['core/src/lib', 'core/include/c++/v1'] if sys.platform == 'darwin' else ['core/src/lib'],
                  'libraries': ['srw_x64', 'libfftw3-3', 'libfftw3f-3', 'libfftw3l-3'] if sys.platform == 'win32' else ['srw', 'm', 'fftw3', 'fftw3f'] ,
                  'sources': ['core/src/clients/python/srwlpy.cpp']}
 
@@ -46,7 +46,7 @@ else:
     srwlpy_kwargs['library_dirs'] = ['core/gcc']
     if sys.platform == 'darwin':
         srwlpy_kwargs['extra_compile_args'] = ['-stdlib=libc++', '-mmacosx-version-min=10.9']
-        srwlpy_kwargs['extra_link_args'] = ['-stdlib=libc++', '-mmacosx-version-min=10.9']
+        srwlpy_kwargs['extra_link_args']    = ['-stdlib=libc++', '-mmacosx-version-min=10.9']
 
 srwlpy = Extension('srwlpy', **srwlpy_kwargs)
 

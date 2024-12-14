@@ -146,7 +146,7 @@ static integer c__1 = 1;
 /*     ------------------------------------------------------------------ */
 /*     main unit */
 /*     ------------------------------------------------------------------ */
-/* Main program */ MAIN__()
+/* Main program */ int MAIN__()
 {
     /* System generated locals */
     integer i__1, i__2, i__3, i__4;
@@ -355,6 +355,7 @@ static integer c__1 = 1;
 /* write slippage field, which escaped */
     last_();
 
+    return 0;
 /* end run */
 } /* MAIN__ */
 
