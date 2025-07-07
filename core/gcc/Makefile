@@ -18,14 +18,14 @@ CXX = c++
 SRW_SRC_DEF=	-D_GNU_SOURCE -D__USE_XOPEN2K8 -DFFTW_ENABLE_FLOAT -D_GM_WITHOUT_BASE -DSRWLIB_STATIC -DNO_TIMER -DANSI_DECLARATORS -DTRILIBRARY
 
 ifeq ($(UNAME), Linux)
-SRW_SRC_DEF += -DLINUX
+	SRW_SRC_DEF += -DLINUX
 else
 ifeq ($(UNAME), Darwin)
-CC  = gcc
-CXX = g++
-SRW_SRC_DEF += -D__MAC__
+	CC  = gcc
+	CXX = g++ -stdlib=libc++ -mmacosx-version-min=10.9
+	SRW_SRC_DEF += -D__MAC__
 else
-SRW_SRC_DEF += -DWIN32
+	SRW_SRC_DEF += -DWIN32
 endif
 endif
 
